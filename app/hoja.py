@@ -21,14 +21,23 @@ def id_hoja():
 
 
 def leer_pestana(nombre, servicio=None):
+    return leer_pestanas([nombre], servicio)[nombre]
+
+
+def leer_pestanas(nombres, servicio=None):
+    """Lee varias pestañas en una sola consulta a Google."""
     servicio = servicio or servicio_sheets()
     respuesta = (
         servicio.spreadsheets()
         .values()
-        .get(spreadsheetId=id_hoja(), range=f"'{nombre}'")
+        .batchGet(spreadsheetId=id_hoja(), ranges=[f"'{n}'" for n in nombres])
         .execute()
     )
-    filas = respuesta.get("values", [])
+    rangos = respuesta.get("valueRanges", [])
+    return {n: _a_filas(r.get("values", [])) for n, r in zip(nombres, rangos)}
+
+
+def _a_filas(filas):
     if not filas:
         return []
     columnas = [c.strip() for c in filas[0]]

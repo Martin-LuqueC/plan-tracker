@@ -12,11 +12,11 @@ from pathlib import Path
 from flask import Flask, jsonify, request, send_from_directory
 
 from google_auth import servicio_sheets
-from hoja import leer_pestana  # también carga el archivo .env
+from hoja import leer_pestanas  # también carga el archivo .env
 from tablero import armar_tablero
 
 PESTANAS = ["Planes", "Semanas", "Tareas", "Marcas"]
-SEGUNDOS_COPIA = 20
+SEGUNDOS_COPIA = 10
 CARPETA_STATIC = Path(__file__).resolve().parent / "static"
 
 app = Flask(__name__, static_folder=None)
@@ -34,7 +34,7 @@ def datos_hoja(forzar=False):
             return _copia["datos"]
         if _servicio is None:
             _servicio = servicio_sheets()
-        datos = {nombre: leer_pestana(nombre, _servicio) for nombre in PESTANAS}
+        datos = leer_pestanas(PESTANAS, _servicio)
         _copia.update(datos=datos, hora=time.time())
         return datos
 
@@ -53,7 +53,8 @@ def estaticos(archivo):
 def api_datos():
     try:
         datos = datos_hoja(forzar=request.args.get("forzar") == "1")
-        return jsonify(armar_tablero(datos, request.args.get("plan")))
+        idioma = "en" if request.args.get("idioma") == "en" else "es"
+        return jsonify(armar_tablero(datos, request.args.get("plan"), idioma=idioma))
     except Exception as error:  # se muestra en pantalla en vez de romper la página
         return jsonify({"error": f"No pude leer la hoja: {error}"}), 502
 

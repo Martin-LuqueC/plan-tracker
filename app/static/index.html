@@ -10,22 +10,30 @@
   <header class="barra">
     <div class="barra-plan" id="plan"></div>
     <div class="barra-dia" id="dia"></div>
-    <div class="barra-avance">
-      <span id="avance-texto"></span>
-      <span class="avance-pista"><span class="avance-relleno" id="avance-relleno"></span></span>
+    <div class="barra-derecha">
+      <div class="barra-avance">
+        <span id="avance-texto"></span>
+        <span class="avance-pista"><span class="avance-relleno" id="avance-relleno"></span></span>
+      </div>
+      <button class="boton-actualizar" id="actualizar" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span id="actualizar-texto"></span>
+      </button>
       <span class="actualizado" id="actualizado"></span>
+      <div class="idiomas" role="group" aria-label="Idioma">
+        <button type="button" data-idioma="es">ES</button>
+        <button type="button" data-idioma="en">EN</button>
+      </div>
     </div>
   </header>
 
   <div class="aviso" id="aviso" hidden></div>
 
-  <main class="cuadrantes" id="cuadrantes">
-    <p class="cargando">Cargando tu plan...</p>
-  </main>
+  <main class="cuadrantes" id="cuadrantes"></main>
 
   <div class="fondo-panel" id="fondo-panel" hidden>
     <section class="panel" id="panel" role="dialog" aria-modal="true" aria-labelledby="panel-titulo">
-      <button class="panel-cerrar" id="panel-cerrar" aria-label="Cerrar">×</button>
+      <button class="panel-cerrar" id="panel-cerrar" type="button">×</button>
       <h2 id="panel-titulo"></h2>
       <p class="panel-sub" id="panel-sub"></p>
       <dl class="panel-datos" id="panel-datos"></dl>
