@@ -8,6 +8,9 @@ token.json
 __pycache__/
 *.pyc
 
+# Registro del servidor
+plan-tracker.log
+
 # Archivos del sistema y del editor
 .vscode/
 .idea/

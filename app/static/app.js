@@ -27,6 +27,7 @@ const TEXTOS = {
     descartar: "Tienes cambios sin guardar. ¿Cerrar sin guardar?",
     cerrar: "Cerrar",
     error: "No se pudo actualizar: {e} Reintento en unos segundos.",
+    sin_servidor: "Plan Tracker está cerrado. Abre \"Abrir Plan Tracker\" de nuevo y esta ventana se pondrá al día sola.",
     error_guardar: "No se guardó: {e}",
     agendar: "Agendar en Calendar",
     reagendar: "Actualizar en Calendar",
@@ -58,6 +59,7 @@ const TEXTOS = {
     descartar: "You have unsaved changes. Close without saving?",
     cerrar: "Close",
     error: "Could not refresh: {e} Retrying in a few seconds.",
+    sin_servidor: "Plan Tracker is closed. Run \"Abrir Plan Tracker\" again and this window will catch up on its own.",
     error_guardar: "Not saved: {e}",
     agendar: "Add to Calendar",
     reagendar: "Update in Calendar",
@@ -153,7 +155,8 @@ async function cargar(forzar = false) {
     }
     $("actualizado").textContent = new Date().toLocaleTimeString(idioma, { hour: "2-digit", minute: "2-digit" });
   } catch (e) {
-    avisar(t("error").replace("{e}", e.message));
+    // TypeError = no hubo respuesta: el servidor está apagado
+    avisar(e instanceof TypeError ? t("sin_servidor") : t("error").replace("{e}", e.message));
   } finally {
     pidiendo = false;
     $("actualizar").classList.remove("girando");

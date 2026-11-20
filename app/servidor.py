@@ -121,6 +121,21 @@ def api_agendar(tarea_id):
     return jsonify({"ok": True, "cambio": texto, "enlace": enlace})
 
 
+@app.get("/api/salud")
+def api_salud():
+    # El lanzador pregunta aquí si Plan Tracker ya está corriendo
+    return jsonify({"app": "plan-tracker"})
+
+
+@app.post("/api/apagar")
+def api_apagar():
+    if _pedido_json() is None:
+        return jsonify({"error": "Pedido no válido."}), 400
+    # Responde primero y se apaga medio segundo después
+    threading.Timer(0.5, os._exit, args=(0,)).start()
+    return jsonify({"ok": True})
+
+
 @app.after_request
 def sin_cache(respuesta):
     respuesta.headers["Cache-Control"] = "no-store"
