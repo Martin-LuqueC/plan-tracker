@@ -13,3 +13,6 @@ __pycache__/
 .idea/
 Thumbs.db
 desktop.ini
+
+# Configuración local de Claude Code
+.claude/

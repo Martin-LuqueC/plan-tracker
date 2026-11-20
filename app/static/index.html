@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Plan Tracker</title>
+  <link rel="stylesheet" href="/static/estilo.css">
+</head>
+<body>
+  <header class="barra">
+    <div class="barra-plan" id="plan"></div>
+    <div class="barra-dia" id="dia"></div>
+    <div class="barra-avance">
+      <span id="avance-texto"></span>
+      <span class="avance-pista"><span class="avance-relleno" id="avance-relleno"></span></span>
+      <span class="actualizado" id="actualizado"></span>
+    </div>
+  </header>
+
+  <div class="aviso" id="aviso" hidden></div>
+
+  <main class="cuadrantes" id="cuadrantes">
+    <p class="cargando">Cargando tu plan...</p>
+  </main>
+
+  <div class="fondo-panel" id="fondo-panel" hidden>
+    <section class="panel" id="panel" role="dialog" aria-modal="true" aria-labelledby="panel-titulo">
+      <button class="panel-cerrar" id="panel-cerrar" aria-label="Cerrar">×</button>
+      <h2 id="panel-titulo"></h2>
+      <p class="panel-sub" id="panel-sub"></p>
+      <dl class="panel-datos" id="panel-datos"></dl>
+    </section>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
