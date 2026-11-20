@@ -1,0 +1,75 @@
+PLAN TRACKER
+Seguimiento de planes de trabajo por semanas, en tu segunda pantalla.
+Los datos viven en tu hoja de Google Sheets "Plan Tracker". Claude
+puede actualizarla desde cualquier chat y el programa lo muestra solo.
+
+============================================================
+USO DIARIO
+============================================================
+
+Abrir Plan Tracker.cmd
+  Doble clic para abrir. Arranca el servidor si hace falta (sin
+  ventana negra) y abre la ventana del programa. Si ya estaba
+  abierto, solo abre otra ventana.
+
+Cerrar Plan Tracker.cmd
+  Apaga el servidor. Usalo despues de actualizar el programa y
+  luego vuelve a abrirlo para que tome la version nueva.
+
+Arrancar con Windows.cmd
+  Activa o desactiva que Plan Tracker se abra solo al encender
+  la computadora.
+
+En la pantalla
+  - Casilla a la izquierda: marca una tarea de una sola vez.
+  - Casillas L M M J V S D: marca cada dia que cumpliste una
+    tarea recurrente (por ejemplo, el bloque de 9 a 12).
+  - Clic en el titulo: abre el panel con estado, detalle, notas,
+    fecha, hora y el boton "Agendar en Calendar".
+  - Boton +: agrega una tarea a esa semana, o un plan nuevo
+    (el + al lado del nombre del plan).
+  - ES / EN: cambia el idioma.
+  - La pantalla se actualiza sola cada 15 segundos. Si Claude
+    cambio algo desde un chat, aparece sin que hagas nada.
+
+Si algo falla, los detalles quedan en plan-tracker.log.
+
+============================================================
+PREPARAR EN UNA COMPUTADORA NUEVA (solo una vez)
+============================================================
+
+PASO 1. Instala Python 3.14 desde python.org.
+
+PASO 2. Permiso de Google
+  En Google Cloud (con tu Gmail personal):
+  1. Activa la API de Google Sheets y la API de Google Calendar.
+  2. Crea un "ID de cliente de OAuth" de tipo "App de escritorio".
+  3. Descarga el JSON, cambiale el nombre a credentials.json y
+     ponlo en esta carpeta.
+  Este archivo es una llave: no lo compartas ni lo subas a GitHub.
+
+PASO 3. Crea el entorno e instala las librerias
+  Abre una terminal en esta carpeta y escribe:
+    py -3.14 -m venv .venv
+    .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+
+PASO 4. Configura la hoja
+  Copia .env.example como .env y completa SPREADSHEET_ID con el id
+  de tu hoja (la parte larga de su enlace:
+  https://docs.google.com/spreadsheets/d/ESTE_ES_EL_ID/edit).
+
+PASO 5. Prueba la conexion
+    .\.venv\Scripts\python.exe app\probar_hoja.py
+  La primera vez se abre el navegador para que Google te pida
+  permiso. Elige tu Gmail. Si aparece "app no verificada", haz
+  clic en Continuar: la app es tuya.
+
+PASO 6. Doble clic en Abrir Plan Tracker.cmd
+
+============================================================
+SI GOOGLE VUELVE A PEDIR PERMISO
+============================================================
+
+Mientras la app de Google Cloud este en modo "Prueba", Google
+vence el permiso cada 7 dias. Es normal: acepta de nuevo en el
+navegador y el programa sigue funcionando.
