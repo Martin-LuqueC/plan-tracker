@@ -45,6 +45,13 @@ const TEXTOS = {
     creando: "Creando...",
     error_crear: "No se creó: {e}",
     archivados: "Archivados",
+    nueva_tarea: "Nueva tarea",
+    agregar_tarea: "Agregar tarea",
+    tarea_campos: { titulo: "Título", frecuencia: "Frecuencia", veces: "Cuántas veces en la semana", dia: "Qué día", meta: "Meta (opcional)", detalle: "Detalle (opcional)" },
+    frecuencias: { una_vez: "1 vez", diaria: "Diaria", dias_habiles: "L a V", semanal: "Semanal", veces: "Veces" },
+    dias_largos: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"],
+    agregando: "Agregando...",
+    error_tarea: "No se agregó: {e}",
   },
   en: {
     cargando: "Loading your plan...",
@@ -87,6 +94,13 @@ const TEXTOS = {
     creando: "Creating...",
     error_crear: "Not created: {e}",
     archivados: "Archived",
+    nueva_tarea: "New task",
+    agregar_tarea: "Add task",
+    tarea_campos: { titulo: "Title", frecuencia: "Frequency", veces: "How many times this week", dia: "Which day", meta: "Goal (optional)", detalle: "Details (optional)" },
+    frecuencias: { una_vez: "Once", diaria: "Daily", dias_habiles: "Mon to Fri", semanal: "Weekly", veces: "Times" },
+    dias_largos: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+    agregando: "Adding...",
+    error_tarea: "Not added: {e}",
   },
 };
 
@@ -143,6 +157,7 @@ function textosFijos() {
   $("f-guardar").textContent = t("guardar");
   etiquetaAgendar(tareaAbierta && datos ? buscarTarea(tareaAbierta)[0] : null);
   textosPlan();
+  textosTarea();
   if (!datos) $("cuadrantes").replaceChildren(crear("p", "semana-nota", t("cargando")));
 }
 
@@ -168,6 +183,12 @@ async function cargar(forzar = false) {
     datos = json;
     avisar("");
     dibujar();
+    // Tarea recién creada: se abre su panel para ponerle fecha y hora
+    if (abrirTrasCargar && buscarTarea(abrirTrasCargar)[0]) {
+      const id = abrirTrasCargar;
+      abrirTrasCargar = null;
+      if (!tareaAbierta) abrirPanel(id);
+    }
     // Enlace directo a una tarea: http://localhost:5050/#tarea=ID abre su panel
     const enlace = location.hash.match(/^#tarea=(.+)$/);
     if (enlace && !tareaAbierta) {
@@ -346,6 +367,12 @@ function dibujar() {
       const clave = { por_empezar: "proxima", terminado: "ultima" }[datos.estado_plan] || "esta";
       cabeza.append(crear("span", "etiqueta", t(clave)));
     }
+    const mas = crear("button", "boton-mas", "+");
+    mas.type = "button";
+    mas.title = `${t("agregar_tarea")}: ${t("semana")} ${s.numero}`;
+    mas.setAttribute("aria-label", mas.title);
+    mas.addEventListener("click", () => abrirNuevaTarea(s.numero));
+    cabeza.append(mas);
     caja.append(cabeza);
     if (s.enfoque) caja.append(crear("p", "semana-enfoque", s.enfoque));
     if (s.nota) caja.append(crear("p", "semana-nota", s.nota));
@@ -594,10 +621,102 @@ async function crearPlan(e) {
   }
 }
 
+// ---------- Tarea nueva ----------
+
+let semanaNuevaTarea = null;
+let abrirTrasCargar = null;   // id de una tarea recién creada, para abrir su panel
+
+function frecuenciaElegida() {
+  const b = $("t-frecuencia").querySelector('[aria-pressed="true"]');
+  return b ? b.dataset.valor : "una_vez";
+}
+
+function elegirFrecuencia(valor) {
+  for (const b of $("t-frecuencia").querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset.valor === valor));
+  $("c-t-veces").hidden = valor !== "veces";
+  $("c-t-dia").hidden = valor !== "semanal";
+}
+
+function textosTarea() {
+  const c = t("tarea_campos");
+  $("tarea-titulo").textContent = t("nueva_tarea");
+  $("l-t-titulo").textContent = c.titulo;
+  $("l-t-frecuencia").textContent = c.frecuencia;
+  $("t-frecuencia").setAttribute("aria-label", c.frecuencia);
+  $("l-t-veces").textContent = c.veces;
+  $("l-t-dia").textContent = c.dia;
+  $("l-t-meta").textContent = c.meta;
+  $("l-t-detalle").textContent = c.detalle;
+  $("t-crear").textContent = t("agregar_tarea");
+  $("tarea-cerrar").setAttribute("aria-label", t("cerrar"));
+  for (const b of $("t-frecuencia").querySelectorAll("button")) b.textContent = t("frecuencias")[b.dataset.valor];
+  const sel = $("t-dia");
+  const elegido = sel.value || "0";
+  sel.replaceChildren();
+  t("dias_largos").forEach((nombre, i) => {
+    const op = crear("option", "", nombre);
+    op.value = String(i);
+    sel.append(op);
+  });
+  sel.value = elegido;
+}
+
+function abrirNuevaTarea(numero) {
+  semanaNuevaTarea = numero;
+  $("tarea-form").reset();
+  $("t-veces").value = "5";
+  $("t-dia").value = "0";
+  elegirFrecuencia("una_vez");
+  $("tarea-sub").textContent = `${t("semana")} ${numero}, ${datos.plan.nombre}`;
+  $("tarea-mensaje").textContent = "";
+  $("tarea-mensaje").classList.remove("error");
+  $("t-crear").disabled = false;
+  $("fondo-tarea").hidden = false;
+  $("t-titulo").focus();
+}
+
+function cerrarNuevaTarea() {
+  $("fondo-tarea").hidden = true;
+}
+
+async function crearTarea(e) {
+  e.preventDefault();
+  const mensaje = $("tarea-mensaje");
+  mensaje.classList.remove("error");
+  mensaje.textContent = t("agregando");
+  $("t-crear").disabled = true;
+  const frecuencia = frecuenciaElegida();
+  try {
+    const r = await enviar("/api/tarea", {
+      plan_id: datos.plan.id,
+      semana: semanaNuevaTarea,
+      titulo: $("t-titulo").value.trim(),
+      frecuencia,
+      veces: frecuencia === "veces" ? Number($("t-veces").value) : null,
+      dia: frecuencia === "semanal" ? Number($("t-dia").value) : null,
+      meta: $("t-meta").value.trim(),
+      detalle: $("t-detalle").value.trim(),
+    });
+    cerrarNuevaTarea();
+    abrirTrasCargar = r.tarea_id;   // al llegar los datos se abre su panel
+  } catch (err) {
+    mensaje.classList.add("error");
+    mensaje.textContent = t("error_tarea").replace("{e}", err.message);
+    $("t-crear").disabled = false;
+  }
+}
+
 // ---------- Eventos ----------
 
 $("panel-cerrar").addEventListener("click", () => cerrarPanel());
 $("fondo-panel").addEventListener("click", (e) => { if (e.target === $("fondo-panel")) cerrarPanel(); });
+$("tarea-cerrar").addEventListener("click", cerrarNuevaTarea);
+$("fondo-tarea").addEventListener("click", (e) => { if (e.target === $("fondo-tarea")) cerrarNuevaTarea(); });
+$("tarea-form").addEventListener("submit", crearTarea);
+$("t-frecuencia").addEventListener("click", (e) => {
+  const b = e.target.closest("button");
+  if (b) elegirFrecuencia(b.dataset.valor);
+});
 $("nuevo-plan").addEventListener("click", abrirNuevoPlan);
 $("plan-cerrar").addEventListener("click", cerrarNuevoPlan);
 $("fondo-plan").addEventListener("click", (e) => { if (e.target === $("fondo-plan")) cerrarNuevoPlan(); });
@@ -605,6 +724,7 @@ $("plan-form").addEventListener("submit", crearPlan);
 $("p-inicio").addEventListener("input", mostrarFinPlan);
 $("p-semanas").addEventListener("change", mostrarFinPlan);
 document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !$("fondo-tarea").hidden) cerrarNuevaTarea();
   if (e.key === "Escape" && !$("fondo-plan").hidden) cerrarNuevoPlan();
   if (e.key === "Escape" && !$("fondo-panel").hidden) cerrarPanel();
   if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && !$("fondo-panel").hidden) $("panel-form").requestSubmit();

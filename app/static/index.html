@@ -118,6 +118,50 @@
     </section>
   </div>
 
+  <div class="fondo-panel" id="fondo-tarea" hidden>
+    <section class="panel" role="dialog" aria-modal="true" aria-labelledby="tarea-titulo">
+      <button class="panel-cerrar" id="tarea-cerrar" type="button">×</button>
+      <h2 id="tarea-titulo"></h2>
+      <p class="panel-sub" id="tarea-sub"></p>
+      <form id="tarea-form" class="formulario" autocomplete="off">
+        <label class="campo">
+          <span class="campo-nombre" id="l-t-titulo"></span>
+          <input type="text" id="t-titulo" maxlength="120" required>
+        </label>
+        <div class="campo">
+          <span class="campo-nombre" id="l-t-frecuencia"></span>
+          <div class="segmentos cinco" id="t-frecuencia" role="group">
+            <button type="button" data-valor="una_vez"></button>
+            <button type="button" data-valor="diaria"></button>
+            <button type="button" data-valor="dias_habiles"></button>
+            <button type="button" data-valor="semanal"></button>
+            <button type="button" data-valor="veces"></button>
+          </div>
+        </div>
+        <label class="campo" id="c-t-veces" hidden>
+          <span class="campo-nombre" id="l-t-veces"></span>
+          <input type="number" id="t-veces" min="1" max="14" step="1" value="5" inputmode="numeric">
+        </label>
+        <label class="campo" id="c-t-dia" hidden>
+          <span class="campo-nombre" id="l-t-dia"></span>
+          <select id="t-dia"></select>
+        </label>
+        <label class="campo">
+          <span class="campo-nombre" id="l-t-meta"></span>
+          <input type="text" id="t-meta" maxlength="120">
+        </label>
+        <label class="campo">
+          <span class="campo-nombre" id="l-t-detalle"></span>
+          <textarea id="t-detalle" rows="3"></textarea>
+        </label>
+        <div class="panel-pie">
+          <span class="panel-mensaje" id="tarea-mensaje" role="status"></span>
+          <button type="submit" class="boton-principal" id="t-crear"></button>
+        </div>
+      </form>
+    </section>
+  </div>
+
   <script src="/static/app.js"></script>
 </body>
 </html>

@@ -115,7 +115,12 @@ button:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
   border-color: var(--acento);
   box-shadow: 0 0 0 1px var(--acento), 0 0 28px rgba(75, 156, 211, 0.18);
 }
-.semana-cabeza { display: flex; align-items: baseline; gap: 12px; }
+.semana-cabeza { display: flex; align-items: center; gap: 12px; min-height: 26px; }
+.semana-cabeza .boton-mas { margin-left: auto; width: 24px; height: 24px; font-size: 16px; }
+.semana-cabeza .etiqueta + .boton-mas { margin-left: 0; }
+.segmentos.cinco { grid-template-columns: repeat(5, 1fr); }
+.segmentos.cinco button { padding: 6px 4px; font-size: 13px; }
+.campo[hidden] { display: none; }
 .semana-cabeza h2 {
   margin: 0; font-size: 13px; font-weight: 700;
   text-transform: uppercase; letter-spacing: 1.4px; color: var(--acento-claro);

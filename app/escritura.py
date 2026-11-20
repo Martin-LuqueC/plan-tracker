@@ -10,6 +10,7 @@ Reglas:
 """
 import re
 import threading
+import unicodedata
 from datetime import date, datetime, timedelta
 
 from google_auth import servicio_sheets
@@ -214,6 +215,88 @@ def crear_plan(nombre, nombre_en, inicio, semanas):
                  f"{inicio.day} {MESES[inicio.month - 1]} al {fin.day} {MESES[fin.month - 1]})")
         registrar_cambio(texto)
         return plan_id, texto
+
+
+FRECUENCIAS = {"una_vez", "diaria", "dias_habiles", "semanal", "veces"}
+
+
+def _slug(texto, palabras=3, largo=24):
+    """'Llamar a Robert Half' -> 'llamar-a-robert'"""
+    sin_tildes = unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode()
+    partes = re.findall(r"[a-z0-9]+", sin_tildes.lower())[:palabras]
+    return "-".join(partes)[:largo].strip("-") or "tarea"
+
+
+def crear_tarea(plan_id, semana, titulo, frecuencia, veces=None, dia=None, meta="", detalle=""):
+    """Agrega una tarea al final de su semana. Devuelve (id de la tarea, texto registrado)."""
+    plan_id = str(plan_id or "").strip()
+    titulo = str(titulo or "").strip()
+    frecuencia = str(frecuencia or "").strip()
+    meta, detalle = str(meta or "").strip(), str(detalle or "").strip()
+    if not titulo:
+        raise ErrorDeDatos("Ponle un título a la tarea.")
+    if len(titulo) > 120:
+        raise ErrorDeDatos("El título es demasiado largo (máximo 120 letras).")
+    if frecuencia not in FRECUENCIAS:
+        raise ErrorDeDatos("Elige una frecuencia válida.")
+    try:
+        semana = int(semana)
+    except (TypeError, ValueError):
+        raise ErrorDeDatos("Semana no válida.")
+    fila = {"plan_id": plan_id, "semana": semana, "titulo": titulo, "frecuencia": frecuencia,
+            "estado": "pendiente", "meta": meta, "detalle": detalle}
+    if frecuencia == "veces":
+        try:
+            veces = int(veces)
+        except (TypeError, ValueError):
+            raise ErrorDeDatos("Indica cuántas veces.")
+        if not 1 <= veces <= 14:
+            raise ErrorDeDatos("Las veces deben ir de 1 a 14.")
+        fila["veces"] = veces
+    if frecuencia == "semanal":
+        try:
+            dia = int(dia)
+        except (TypeError, ValueError):
+            raise ErrorDeDatos("Elige el día de la semana.")
+        if not 0 <= dia <= 6:
+            raise ErrorDeDatos("Elige el día de la semana.")
+        fila["dia"] = dia
+
+    with _candado:
+        semanas = _leer("Semanas")
+        cols_s = [c.strip() for c in semanas[0]] if semanas else []
+        existe_semana = any(
+            dict(zip(cols_s, f)).get("plan_id", "").strip() == plan_id
+            and str(dict(zip(cols_s, f)).get("numero", "")).strip() == str(semana)
+            for f in semanas[1:])
+        if not existe_semana:
+            raise ErrorDeDatos(f"No encontré la semana {semana} de ese plan en la hoja.")
+
+        tareas = _leer("Tareas")
+        cols = [c.strip() for c in tareas[0]] if tareas else []
+        if "id" not in cols:
+            raise ErrorDeDatos("La pestaña Tareas no tiene la columna id.")
+        filas = [dict(zip(cols, f)) for f in tareas[1:]]
+        ids = {f.get("id", "").strip() for f in filas}
+        base = f"s{semana}-{_slug(titulo)}"
+        tarea_id, n = base, 2
+        while tarea_id in ids:
+            tarea_id, n = f"{base}-{n}", n + 1
+
+        ordenes = []
+        for f in filas:
+            if f.get("plan_id", "").strip() == plan_id and str(f.get("semana", "")).strip() == str(semana):
+                try:
+                    ordenes.append(int(float(f.get("orden", "0"))))
+                except ValueError:
+                    pass
+        fila["id"] = tarea_id
+        fila["orden"] = (max(ordenes) if ordenes else 0) + 10
+
+        _agregar_filas("Tareas", [fila])
+        texto = f"Tarea nueva (semana {semana}): {titulo}"
+        registrar_cambio(texto)
+        return tarea_id, texto
 
 
 def marcar_dia(tarea_id, fecha, marcado):
