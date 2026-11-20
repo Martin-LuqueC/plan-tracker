@@ -1,0 +1,15 @@
+# Credenciales de Google: NUNCA se suben
+credentials.json
+token.json
+.env
+
+# Entorno virtual y archivos temporales de Python
+.venv/
+__pycache__/
+*.pyc
+
+# Archivos del sistema y del editor
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
