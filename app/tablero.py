@@ -110,6 +110,15 @@ def dias_esperados(t):
     return list(range(7))
 
 
+def traducido(fila, campo, idioma):
+    """En inglés usa la columna campo_en si tiene texto; si no, la original."""
+    if idioma == "en":
+        valor = str(fila.get(f"{campo}_en", "")).strip()
+        if valor:
+            return valor
+    return fila.get(campo, "")
+
+
 def armar_tablero(datos, plan_id=None, hoy=None, idioma="es"):
     tx = TEXTOS[idioma]
     hoy = hoy or date.today()
@@ -198,8 +207,8 @@ def armar_tablero(datos, plan_id=None, hoy=None, idioma="es"):
         semanas.append({
             "numero": numero,
             "rango": rango_texto(ini, fin, idioma),
-            "enfoque": s.get("enfoque", ""),
-            "nota": s.get("nota", ""),
+            "enfoque": traducido(s, "enfoque", idioma),
+            "nota": traducido(s, "nota", idioma),
             "actual": numero == actual,
             "tareas": tareas,
             "avance": round(100 * hechas / total) if total else 0,
@@ -220,8 +229,8 @@ def armar_tablero(datos, plan_id=None, hoy=None, idioma="es"):
     return {
         "hoy": hoy.isoformat(),
         "idioma": idioma,
-        "plan": {"id": pid, "nombre": plan.get("nombre", "")},
-        "planes": [{"id": p.get("id", ""), "nombre": p.get("nombre", "")} for p in planes],
+        "plan": {"id": pid, "nombre": traducido(plan, "nombre", idioma)},
+        "planes": [{"id": p.get("id", ""), "nombre": traducido(p, "nombre", idioma)} for p in planes],
         "estado_plan": estado_plan,
         "texto_dia": texto_dia,
         "semana_actual": actual,
