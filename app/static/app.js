@@ -389,7 +389,27 @@ function dibujar() {
   }
   // Si el panel está abierto y no hay cambios sin guardar, se pone al día con la hoja
   if (tareaAbierta && !haySinGuardar()) llenarPanel(tareaAbierta);
+  ajustarTamano();
 }
+
+// Compacta la pantalla solo si algún cuadrante no cabe, en dos niveles
+function ajustarTamano() {
+  const cuerpo = document.body;
+  const desborda = () => [...document.querySelectorAll(".tareas")].some((u) => u.scrollHeight - u.clientHeight > 1);
+  cuerpo.classList.remove("apretado-1", "apretado-2");
+  if (innerWidth <= 760 || !desborda()) return;   // en ventana angosta la página ya hace scroll
+  cuerpo.classList.add("apretado-1");
+  if (desborda()) cuerpo.classList.add("apretado-2");
+}
+
+let esperaTamano = null;
+function programarAjuste() {
+  clearTimeout(esperaTamano);
+  esperaTamano = setTimeout(ajustarTamano, 120);
+}
+window.addEventListener("resize", programarAjuste);
+// Además vigila el tamaño real de la página (cubre casos en que no llega el evento resize)
+if ("ResizeObserver" in window) new ResizeObserver(programarAjuste).observe(document.documentElement);
 
 // ---------- Panel de detalle ----------
 

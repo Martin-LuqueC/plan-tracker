@@ -289,6 +289,27 @@ span.casilla { border-style: dotted; }
   .tarea { padding: 3px 0; }
 }
 
+/* Compactación solo cuando algún cuadrante no cabe (la activa app.js midiendo) */
+body.apretado-1 { font-size: 14px; }
+.apretado-1 .barra { padding: 5px 16px; }
+.apretado-1 .barra-plan { font-size: 15px; }
+.apretado-1 .cuadrantes { gap: 8px; padding: 8px 10px 10px; }
+.apretado-1 .semana { padding: 7px 14px; border-radius: 12px; }
+.apretado-1 .semana-cabeza { min-height: 22px; }
+.apretado-1 .semana-cabeza h2 { font-size: 12px; }
+.apretado-1 .semana-enfoque { font-size: 14px; margin-top: 1px; }
+.apretado-1 .semana-nota { font-size: 12px; }
+.apretado-1 .tareas { margin-top: 2px; }
+.apretado-1 .tarea { padding: 1px 0; gap: 10px; }
+.apretado-1 .casilla, .apretado-1 .dia { width: 17px; height: 17px; }
+.apretado-1 .frecuencia { font-size: 12px; }
+
+body.apretado-2 { font-size: 13px; }
+.apretado-2 .semana-enfoque { font-size: 13px; }
+.apretado-2 .semana-nota { display: none; }  /* la nota sigue en la hoja; aquí no cabe */
+.apretado-2 .tarea { padding: 0; }
+.apretado-2 .casilla, .apretado-2 .dia { width: 16px; height: 16px; font-size: 9px; }
+
 /* Ventana angosta: los cuadrantes pasan a una columna */
 @media (max-width: 980px) {
   .barra { flex-wrap: wrap; gap: 8px 16px; }
