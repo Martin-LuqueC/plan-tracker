@@ -28,6 +28,12 @@ const TEXTOS = {
     cerrar: "Cerrar",
     error: "No se pudo actualizar: {e} Reintento en unos segundos.",
     error_guardar: "No se guardó: {e}",
+    agendar: "Agendar en Calendar",
+    reagendar: "Actualizar en Calendar",
+    agendando: "Agendando...",
+    agendado: "Listo en Calendar.",
+    ver_evento: "Ver en Calendar",
+    error_agendar: "No se agendó: {e}",
   },
   en: {
     cargando: "Loading your plan...",
@@ -53,6 +59,12 @@ const TEXTOS = {
     cerrar: "Close",
     error: "Could not refresh: {e} Retrying in a few seconds.",
     error_guardar: "Not saved: {e}",
+    agendar: "Add to Calendar",
+    reagendar: "Update in Calendar",
+    agendando: "Scheduling...",
+    agendado: "Done in Calendar.",
+    ver_evento: "Open in Calendar",
+    error_agendar: "Not scheduled: {e}",
   },
 };
 
@@ -107,6 +119,7 @@ function textosFijos() {
   $("f-estado").setAttribute("aria-label", campos.estado);
   for (const b of $("f-estado").querySelectorAll("button")) b.textContent = t("estados")[b.dataset.valor];
   $("f-guardar").textContent = t("guardar");
+  etiquetaAgendar(tareaAbierta && datos ? buscarTarea(tareaAbierta)[0] : null);
   if (!datos) $("cuadrantes").replaceChildren(crear("p", "semana-nota", t("cargando")));
 }
 
@@ -365,6 +378,7 @@ function llenarPanel(id) {
   $("f-fecha").value = tarea.fecha;
   $("f-hora").value = tarea.hora;
   $("f-duracion").value = tarea.duracion_min;
+  etiquetaAgendar(tarea);
   original = valoresPanel();
   actualizarBotonGuardar();
   return true;
@@ -372,8 +386,7 @@ function llenarPanel(id) {
 
 function abrirPanel(id) {
   tareaAbierta = id;
-  $("panel-mensaje").textContent = "";
-  $("panel-mensaje").classList.remove("error");
+  mostrarMensaje("");
   if (!llenarPanel(id)) return;
   $("fondo-panel").hidden = false;
   $("f-notas").focus();
@@ -386,31 +399,74 @@ function cerrarPanel(forzar = false) {
   $("fondo-panel").hidden = true;
 }
 
-async function guardarPanel(e) {
-  e.preventDefault();
-  if (!haySinGuardar()) return;
+function mostrarMensaje(texto, esError = false, enlace = "") {
+  const mensaje = $("panel-mensaje");
+  mensaje.classList.toggle("error", esError);
+  mensaje.textContent = texto;
+  if (enlace) {
+    const a = crear("a", "", t("ver_evento"));
+    a.href = enlace;
+    a.target = "_blank";
+    a.rel = "noopener";
+    mensaje.append(" ", a);
+  }
+}
+
+// Guarda lo que cambió en el panel. Devuelve true si quedó todo guardado.
+async function guardarCambios() {
+  if (!haySinGuardar()) return true;
   const [tarea] = buscarTarea(tareaAbierta);
-  if (!tarea) return;
+  if (!tarea) return false;
   const ahora = valoresPanel();
   const cambios = {};
   for (const c of Object.keys(ahora)) if (ahora[c] !== original[c]) cambios[c] = ahora[c];
 
-  const mensaje = $("panel-mensaje");
-  mensaje.classList.remove("error");
-  mensaje.textContent = t("guardando");
+  mostrarMensaje(t("guardando"));
   $("f-guardar").disabled = true;
   try {
     await enviar(`/api/tarea/${encodeURIComponent(tarea.id)}`, { cambios });
     Object.assign(tarea, cambios);   // se ve al instante; la hoja ya está actualizada
     recalcular(tarea);
     original = ahora;
-    mensaje.textContent = t("guardado");
+    mostrarMensaje(t("guardado"));
     dibujar();
+    return true;
   } catch (err) {
-    mensaje.classList.add("error");
-    mensaje.textContent = t("error_guardar").replace("{e}", err.message);
+    mostrarMensaje(t("error_guardar").replace("{e}", err.message), true);
+    return false;
+  } finally {
+    actualizarBotonGuardar();
   }
-  actualizarBotonGuardar();
+}
+
+async function guardarPanel(e) {
+  e.preventDefault();
+  await guardarCambios();
+}
+
+async function agendarPanel() {
+  const boton = $("f-agendar");
+  boton.disabled = true;
+  try {
+    if (!(await guardarCambios())) return;   // primero se guarda lo que escribiste
+    const [tarea] = buscarTarea(tareaAbierta);
+    if (!tarea) return;
+    mostrarMensaje(t("agendando"));
+    try {
+      const r = await enviar(`/api/tarea/${encodeURIComponent(tarea.id)}/agendar`, {});
+      tarea.evento_id = tarea.evento_id || "nuevo";
+      etiquetaAgendar(tarea);
+      mostrarMensaje(t("agendado"), false, r.enlace);
+    } catch (err) {
+      mostrarMensaje(t("error_agendar").replace("{e}", err.message), true);
+    }
+  } finally {
+    boton.disabled = false;
+  }
+}
+
+function etiquetaAgendar(tarea) {
+  $("f-agendar-texto").textContent = tarea && tarea.evento_id ? t("reagendar") : t("agendar");
 }
 
 // ---------- Eventos ----------
@@ -422,6 +478,7 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && !$("fondo-panel").hidden) $("panel-form").requestSubmit();
 });
 $("panel-form").addEventListener("submit", guardarPanel);
+$("f-agendar").addEventListener("click", agendarPanel);
 $("panel-form").addEventListener("input", () => { $("panel-mensaje").textContent = ""; actualizarBotonGuardar(); });
 $("f-estado").addEventListener("click", (e) => {
   const b = e.target.closest("button");

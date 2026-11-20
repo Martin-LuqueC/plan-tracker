@@ -100,34 +100,7 @@ def actualizar_tarea(tarea_id, cambios):
         raise ErrorDeDatos("No hay nada que guardar.")
 
     with _candado:
-        filas = _leer("Tareas")
-        if not filas:
-            raise ErrorDeDatos("La pestaña Tareas está vacía.")
-        columnas = [c.strip() for c in filas[0]]
-        if "id" not in columnas:
-            raise ErrorDeDatos("La pestaña Tareas no tiene la columna id.")
-        col_id = columnas.index("id")
-
-        numero_fila, actual = None, None
-        for i, fila in enumerate(filas[1:], start=2):
-            if len(fila) > col_id and fila[col_id].strip() == tarea_id:
-                numero_fila, actual = i, dict(zip(columnas, fila))
-                break
-        if numero_fila is None:
-            raise ErrorDeDatos(f"No encontré la tarea {tarea_id} en la hoja.")
-
-        datos = []
-        for campo, valor in cambios.items():
-            if campo not in columnas:
-                raise ErrorDeDatos(f"La pestaña Tareas no tiene la columna {campo}.")
-            celda = f"'Tareas'!{_letra(columnas.index(campo))}{numero_fila}"
-            datos.append({"range": celda, "values": [[valor]]})
-        _srv().spreadsheets().values().batchUpdate(
-            spreadsheetId=id_hoja(),
-            body={"valueInputOption": "RAW", "data": datos},
-        ).execute()
-
-        titulo = actual.get("titulo", tarea_id)
+        titulo = _escribir_campos(tarea_id, cambios)
         if set(cambios) == {"estado"}:
             nuevo = cambios["estado"]
             texto = (f"Marcado como hecho: {titulo}" if nuevo == "hecho"
@@ -137,6 +110,43 @@ def actualizar_tarea(tarea_id, cambios):
             texto = f"Editado ({nombres}): {titulo}"
         registrar_cambio(texto)
         return texto
+
+
+def guardar_evento_id(tarea_id, evento_id):
+    """Guarda el id del evento de Calendar (el registro en Cambios lo hace calendario.py)."""
+    with _candado:
+        _escribir_campos(tarea_id, {"evento_id": str(evento_id)})
+
+
+def _escribir_campos(tarea_id, cambios):
+    """Escribe los campos en la fila de la tarea. Devuelve su título. Usar dentro de _candado."""
+    filas = _leer("Tareas")
+    if not filas:
+        raise ErrorDeDatos("La pestaña Tareas está vacía.")
+    columnas = [c.strip() for c in filas[0]]
+    if "id" not in columnas:
+        raise ErrorDeDatos("La pestaña Tareas no tiene la columna id.")
+    col_id = columnas.index("id")
+
+    numero_fila, actual = None, None
+    for i, fila in enumerate(filas[1:], start=2):
+        if len(fila) > col_id and fila[col_id].strip() == tarea_id:
+            numero_fila, actual = i, dict(zip(columnas, fila))
+            break
+    if numero_fila is None:
+        raise ErrorDeDatos(f"No encontré la tarea {tarea_id} en la hoja.")
+
+    datos = []
+    for campo, valor in cambios.items():
+        if campo not in columnas:
+            raise ErrorDeDatos(f"La pestaña Tareas no tiene la columna {campo}.")
+        celda = f"'Tareas'!{_letra(columnas.index(campo))}{numero_fila}"
+        datos.append({"range": celda, "values": [[valor]]})
+    _srv().spreadsheets().values().batchUpdate(
+        spreadsheetId=id_hoja(),
+        body={"valueInputOption": "RAW", "data": datos},
+    ).execute()
+    return actual.get("titulo", tarea_id)
 
 
 def marcar_dia(tarea_id, fecha, marcado):

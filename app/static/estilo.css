@@ -239,6 +239,17 @@ span.casilla { border-style: dotted; }
 }
 .boton-principal:hover { background: var(--acento-claro); }
 .boton-principal:disabled { background: rgba(75, 156, 211, 0.25); color: var(--suave); cursor: default; }
+.boton-secundario {
+  display: inline-flex; align-items: center; gap: 7px;
+  border: 1px solid var(--acento); border-radius: 10px; cursor: pointer;
+  padding: 7px 14px; font-weight: 600; background: var(--acento-tenue); color: var(--texto);
+  white-space: nowrap;
+}
+.boton-secundario:hover { background: rgba(75, 156, 211, 0.28); }
+.boton-secundario:disabled { opacity: .5; cursor: default; }
+.boton-secundario svg { width: 16px; height: 16px; }
+.panel-pie { flex-wrap: wrap; }
+.panel-mensaje a { color: var(--acento-claro); font-weight: 600; }
 
 /* Ventana baja: se reduce el espacio poco a poco para que todo quepa sin scroll */
 @media (max-height: 860px) {

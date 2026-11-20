@@ -11,6 +11,7 @@ from pathlib import Path
 
 from flask import Flask, jsonify, request, send_from_directory
 
+from calendario import agendar
 from escritura import ErrorDeDatos, actualizar_tarea, marcar_dia
 from google_auth import servicio_sheets
 from hoja import leer_pestanas  # también carga el archivo .env
@@ -103,6 +104,21 @@ def api_marca():
     finally:
         _olvidar_copia()
     return jsonify({"ok": True, "cambio": texto})
+
+
+@app.post("/api/tarea/<tarea_id>/agendar")
+def api_agendar(tarea_id):
+    if _pedido_json() is None:
+        return jsonify({"error": "Pedido no válido."}), 400
+    try:
+        texto, enlace = agendar(tarea_id)
+    except ErrorDeDatos as error:
+        return jsonify({"error": str(error)}), 400
+    except Exception as error:
+        return jsonify({"error": f"No pude agendar en Calendar: {error}"}), 502
+    finally:
+        _olvidar_copia()
+    return jsonify({"ok": True, "cambio": texto, "enlace": enlace})
 
 
 @app.after_request
