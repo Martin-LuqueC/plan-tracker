@@ -12,7 +12,7 @@ from pathlib import Path
 from flask import Flask, jsonify, request, send_from_directory
 
 from calendario import agendar
-from escritura import ErrorDeDatos, actualizar_tarea, marcar_dia
+from escritura import ErrorDeDatos, actualizar_tarea, crear_plan, marcar_dia
 from google_auth import servicio_sheets
 from hoja import leer_pestanas  # también carga el archivo .env
 from tablero import armar_tablero
@@ -119,6 +119,23 @@ def api_agendar(tarea_id):
     finally:
         _olvidar_copia()
     return jsonify({"ok": True, "cambio": texto, "enlace": enlace})
+
+
+@app.post("/api/plan")
+def api_plan():
+    cuerpo = _pedido_json()
+    if cuerpo is None:
+        return jsonify({"error": "Pedido no válido."}), 400
+    try:
+        plan_id, texto = crear_plan(cuerpo.get("nombre"), cuerpo.get("nombre_en"),
+                                    cuerpo.get("inicio"), cuerpo.get("semanas"))
+    except ErrorDeDatos as error:
+        return jsonify({"error": str(error)}), 400
+    except Exception as error:
+        return jsonify({"error": f"No pude crear el plan en la hoja: {error}"}), 502
+    finally:
+        _olvidar_copia()
+    return jsonify({"ok": True, "plan_id": plan_id, "cambio": texto})
 
 
 @app.get("/api/salud")

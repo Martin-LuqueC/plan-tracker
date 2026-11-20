@@ -10,7 +10,10 @@
 </head>
 <body>
   <header class="barra">
-    <div class="barra-plan" id="plan"></div>
+    <div class="barra-plan">
+      <span id="plan"></span>
+      <button type="button" class="boton-mas" id="nuevo-plan">+</button>
+    </div>
     <div class="barra-dia" id="dia"></div>
     <div class="barra-derecha">
       <div class="barra-avance">
@@ -77,6 +80,39 @@
             <span id="f-agendar-texto"></span>
           </button>
           <button type="submit" class="boton-principal" id="f-guardar"></button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <div class="fondo-panel" id="fondo-plan" hidden>
+    <section class="panel" role="dialog" aria-modal="true" aria-labelledby="plan-titulo">
+      <button class="panel-cerrar" id="plan-cerrar" type="button">×</button>
+      <h2 id="plan-titulo"></h2>
+      <p class="panel-sub" id="plan-sub"></p>
+      <form id="plan-form" class="formulario" autocomplete="off">
+        <label class="campo">
+          <span class="campo-nombre" id="l-plan-nombre"></span>
+          <input type="text" id="p-nombre" maxlength="80" required>
+        </label>
+        <label class="campo">
+          <span class="campo-nombre" id="l-plan-nombre-en"></span>
+          <input type="text" id="p-nombre-en" maxlength="80">
+        </label>
+        <div class="fila-campos dos">
+          <label class="campo">
+            <span class="campo-nombre" id="l-plan-inicio"></span>
+            <input type="date" id="p-inicio" required>
+          </label>
+          <label class="campo">
+            <span class="campo-nombre" id="l-plan-semanas"></span>
+            <select id="p-semanas"></select>
+          </label>
+        </div>
+        <p class="plan-fin" id="p-fin"></p>
+        <div class="panel-pie">
+          <span class="panel-mensaje" id="plan-mensaje" role="status"></span>
+          <button type="submit" class="boton-principal" id="p-crear"></button>
         </div>
       </form>
     </section>

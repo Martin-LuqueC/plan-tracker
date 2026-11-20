@@ -35,6 +35,16 @@ const TEXTOS = {
     agendado: "Listo en Calendar.",
     ver_evento: "Ver en Calendar",
     error_agendar: "No se agendó: {e}",
+    sin_tareas_plan: "Sin tareas. Pídele a Claude que las agregue.",
+    nuevo_plan: "Nuevo plan",
+    nuevo_plan_sub: "Se guarda en tu hoja. Después pídele a Claude que agregue las tareas.",
+    plan_campos: { nombre: "Nombre", nombre_en: "Nombre en inglés (opcional)", inicio: "Inicio", semanas: "Semanas" },
+    semanas_n: (n) => (n === 1 ? "1 semana" : `${n} semanas`),
+    termina: "Termina el {f}.",
+    crear: "Crear plan",
+    creando: "Creando...",
+    error_crear: "No se creó: {e}",
+    archivados: "Archivados",
   },
   en: {
     cargando: "Loading your plan...",
@@ -67,6 +77,16 @@ const TEXTOS = {
     agendado: "Done in Calendar.",
     ver_evento: "Open in Calendar",
     error_agendar: "Not scheduled: {e}",
+    sin_tareas_plan: "No tasks yet. Ask Claude to add them.",
+    nuevo_plan: "New plan",
+    nuevo_plan_sub: "It is saved to your sheet. Then ask Claude to add the tasks.",
+    plan_campos: { nombre: "Name", nombre_en: "English name (optional)", inicio: "Start", semanas: "Weeks" },
+    semanas_n: (n) => (n === 1 ? "1 week" : `${n} weeks`),
+    termina: "Ends on {f}.",
+    crear: "Create plan",
+    creando: "Creating...",
+    error_crear: "Not created: {e}",
+    archivados: "Archived",
   },
 };
 
@@ -122,6 +142,7 @@ function textosFijos() {
   for (const b of $("f-estado").querySelectorAll("button")) b.textContent = t("estados")[b.dataset.valor];
   $("f-guardar").textContent = t("guardar");
   etiquetaAgendar(tareaAbierta && datos ? buscarTarea(tareaAbierta)[0] : null);
+  textosPlan();
   if (!datos) $("cuadrantes").replaceChildren(crear("p", "semana-nota", t("cargando")));
 }
 
@@ -235,11 +256,19 @@ function dibujarBarra() {
   if (datos.planes.length > 1) {
     const sel = crear("select");
     sel.setAttribute("aria-label", "Plan");
-    for (const p of datos.planes) {
+    const opcion = (p) => {
       const op = crear("option", "", p.nombre);
       op.value = p.id;
       op.selected = p.id === datos.plan.id;
-      sel.append(op);
+      return op;
+    };
+    for (const p of datos.planes.filter((p) => p.activo)) sel.append(opcion(p));
+    const archivados = datos.planes.filter((p) => !p.activo);
+    if (archivados.length) {
+      const grupo = crear("optgroup");
+      grupo.label = t("archivados");
+      for (const p of archivados) grupo.append(opcion(p));
+      sel.append(grupo);
     }
     sel.addEventListener("change", () => { guardar("plan", sel.value); cargar(); });
     caja.append(sel);
@@ -303,6 +332,12 @@ function dibujar() {
 
   const cont = $("cuadrantes");
   cont.replaceChildren();
+  // 1 a 4 semanas: 2 x 2. Más semanas: se agregan columnas (hasta 4) y luego filas.
+  const n = Math.max(datos.semanas.length, 1);
+  const columnas = n <= 4 ? 2 : Math.min(4, Math.ceil(n / 2));
+  cont.style.setProperty("--columnas", columnas);
+  cont.style.setProperty("--filas", Math.max(Math.ceil(n / columnas), n <= 4 ? 2 : 1));
+  const planSinTareas = datos.semanas.every((s) => !s.tareas.length);
   for (const s of datos.semanas) {
     const caja = crear("section", "semana" + (s.actual ? " actual" : ""));
     const cabeza = crear("div", "semana-cabeza");
@@ -317,7 +352,7 @@ function dibujar() {
 
     const lista = crear("ul", "tareas");
     for (const tarea of s.tareas) lista.append(dibujarTarea(tarea));
-    if (!s.tareas.length) lista.append(crear("li", "semana-nota", t("sin_tareas")));
+    if (!s.tareas.length) lista.append(crear("li", "semana-nota", t(planSinTareas ? "sin_tareas_plan" : "sin_tareas")));
     caja.append(lista);
     cont.append(caja);
   }
@@ -472,11 +507,105 @@ function etiquetaAgendar(tarea) {
   $("f-agendar-texto").textContent = tarea && tarea.evento_id ? t("reagendar") : t("agendar");
 }
 
+// ---------- Plan nuevo ----------
+
+function fechaIso(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function proximoLunes() {
+  const d = new Date();
+  d.setHours(12, 0, 0, 0);
+  const faltan = (8 - d.getDay()) % 7 || 7; // getDay: 0 domingo, 1 lunes
+  d.setDate(d.getDate() + faltan);
+  return fechaIso(d);
+}
+
+function mostrarFinPlan() {
+  const inicio = $("p-inicio").value;
+  const semanas = Number($("p-semanas").value);
+  if (!inicio || !semanas) { $("p-fin").textContent = ""; return; }
+  const fin = new Date(inicio + "T12:00:00");
+  fin.setDate(fin.getDate() + 7 * semanas - 1);
+  const texto = fin.toLocaleDateString(idioma, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  $("p-fin").textContent = t("termina").replace("{f}", texto);
+}
+
+function textosPlan() {
+  const c = t("plan_campos");
+  $("plan-titulo").textContent = t("nuevo_plan");
+  $("plan-sub").textContent = t("nuevo_plan_sub");
+  $("l-plan-nombre").textContent = c.nombre;
+  $("l-plan-nombre-en").textContent = c.nombre_en;
+  $("l-plan-inicio").textContent = c.inicio;
+  $("l-plan-semanas").textContent = c.semanas;
+  $("p-crear").textContent = t("crear");
+  $("nuevo-plan").title = t("nuevo_plan");
+  $("nuevo-plan").setAttribute("aria-label", t("nuevo_plan"));
+  $("plan-cerrar").setAttribute("aria-label", t("cerrar"));
+  const sel = $("p-semanas");
+  const elegido = sel.value || "4";
+  sel.replaceChildren();
+  for (let i = 1; i <= 8; i++) {
+    const op = crear("option", "", t("semanas_n")(i));
+    op.value = String(i);
+    sel.append(op);
+  }
+  sel.value = elegido;
+  mostrarFinPlan();
+}
+
+function abrirNuevoPlan() {
+  $("plan-form").reset();
+  $("p-semanas").value = "4";
+  $("p-inicio").value = proximoLunes();
+  $("plan-mensaje").textContent = "";
+  $("plan-mensaje").classList.remove("error");
+  $("p-crear").disabled = false;
+  mostrarFinPlan();
+  $("fondo-plan").hidden = false;
+  $("p-nombre").focus();
+}
+
+function cerrarNuevoPlan() {
+  $("fondo-plan").hidden = true;
+}
+
+async function crearPlan(e) {
+  e.preventDefault();
+  const mensaje = $("plan-mensaje");
+  mensaje.classList.remove("error");
+  mensaje.textContent = t("creando");
+  $("p-crear").disabled = true;
+  try {
+    const r = await enviar("/api/plan", {
+      nombre: $("p-nombre").value.trim(),
+      nombre_en: $("p-nombre-en").value.trim(),
+      inicio: $("p-inicio").value,
+      semanas: Number($("p-semanas").value),
+    });
+    guardar("plan", r.plan_id);   // la pantalla pasa al plan nuevo
+    cerrarNuevoPlan();
+    cargar(true);
+  } catch (err) {
+    mensaje.classList.add("error");
+    mensaje.textContent = t("error_crear").replace("{e}", err.message);
+    $("p-crear").disabled = false;
+  }
+}
+
 // ---------- Eventos ----------
 
 $("panel-cerrar").addEventListener("click", () => cerrarPanel());
 $("fondo-panel").addEventListener("click", (e) => { if (e.target === $("fondo-panel")) cerrarPanel(); });
+$("nuevo-plan").addEventListener("click", abrirNuevoPlan);
+$("plan-cerrar").addEventListener("click", cerrarNuevoPlan);
+$("fondo-plan").addEventListener("click", (e) => { if (e.target === $("fondo-plan")) cerrarNuevoPlan(); });
+$("plan-form").addEventListener("submit", crearPlan);
+$("p-inicio").addEventListener("input", mostrarFinPlan);
+$("p-semanas").addEventListener("change", mostrarFinPlan);
 document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !$("fondo-plan").hidden) cerrarNuevoPlan();
   if (e.key === "Escape" && !$("fondo-panel").hidden) cerrarPanel();
   if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && !$("fondo-panel").hidden) $("panel-form").requestSubmit();
 });

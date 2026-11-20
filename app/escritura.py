@@ -10,7 +10,7 @@ Reglas:
 """
 import re
 import threading
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from google_auth import servicio_sheets
 from hoja import id_hoja
@@ -147,6 +147,73 @@ def _escribir_campos(tarea_id, cambios):
         body={"valueInputOption": "RAW", "data": datos},
     ).execute()
     return actual.get("titulo", tarea_id)
+
+
+MAX_SEMANAS = 8
+
+
+def _agregar_filas(pestana, filas_dict):
+    """Agrega filas al final de una pestaña, poniendo cada valor en la columna con su nombre."""
+    encabezado = _leer(pestana)
+    columnas = [c.strip() for c in encabezado[0]] if encabezado else []
+    faltan = {c for fila in filas_dict for c in fila if fila[c] != ""} - set(columnas)
+    if faltan:
+        raise ErrorDeDatos(f"La pestaña {pestana} no tiene las columnas: {', '.join(sorted(faltan))}")
+    valores = [[fila.get(c, "") for c in columnas] for fila in filas_dict]
+    _srv().spreadsheets().values().append(
+        spreadsheetId=id_hoja(), range=f"'{pestana}'!A1",
+        valueInputOption="RAW", insertDataOption="INSERT_ROWS",
+        body={"values": valores},
+    ).execute()
+
+
+def crear_plan(nombre, nombre_en, inicio, semanas):
+    """Crea un plan con sus semanas. Devuelve (id del plan, texto registrado en Cambios)."""
+    nombre = str(nombre or "").strip()
+    nombre_en = str(nombre_en or "").strip()
+    if not nombre:
+        raise ErrorDeDatos("Ponle un nombre al plan.")
+    if len(nombre) > 80 or len(nombre_en) > 80:
+        raise ErrorDeDatos("El nombre es demasiado largo (máximo 80 letras).")
+    try:
+        inicio = date.fromisoformat(str(inicio).strip())
+    except ValueError:
+        raise ErrorDeDatos("La fecha de inicio no es válida.")
+    try:
+        semanas = int(semanas)
+    except (TypeError, ValueError):
+        raise ErrorDeDatos("El número de semanas no es válido.")
+    if not 1 <= semanas <= MAX_SEMANAS:
+        raise ErrorDeDatos(f"El plan debe tener entre 1 y {MAX_SEMANAS} semanas.")
+    fin = inicio + timedelta(days=7 * semanas - 1)
+
+    with _candado:
+        planes = _leer("Planes")
+        columnas = [c.strip() for c in planes[0]] if planes else []
+        if "id" not in columnas:
+            raise ErrorDeDatos("La pestaña Planes no tiene la columna id.")
+        ci = columnas.index("id")
+        existentes = {f[ci].strip() for f in planes[1:] if len(f) > ci}
+        base = "p" + inicio.strftime("%Y%m%d")
+        plan_id, n = base, 2
+        while plan_id in existentes:
+            plan_id, n = f"{base}-{n}", n + 1
+
+        fila_plan = {"id": plan_id, "nombre": nombre, "inicio": inicio.isoformat(),
+                     "fin": fin.isoformat(), "activo": "SI"}
+        if nombre_en:
+            fila_plan["nombre_en"] = nombre_en
+        _agregar_filas("Planes", [fila_plan])
+        _agregar_filas("Semanas", [
+            {"plan_id": plan_id, "numero": i + 1,
+             "inicio": (inicio + timedelta(days=7 * i)).isoformat(),
+             "fin": (inicio + timedelta(days=7 * i + 6)).isoformat()}
+            for i in range(semanas)
+        ])
+        texto = (f"Plan nuevo: {nombre} ({semanas} semanas, del "
+                 f"{inicio.day} {MESES[inicio.month - 1]} al {fin.day} {MESES[fin.month - 1]})")
+        registrar_cambio(texto)
+        return plan_id, texto
 
 
 def marcar_dia(tarea_id, fecha, marcado):
