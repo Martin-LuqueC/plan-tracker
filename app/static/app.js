@@ -1,5 +1,5 @@
-// Plan Tracker: dibuja el tablero con los datos de /api/datos.
-// Fase 3: solo lectura. Se refresca sola cada 15 segundos y con el botón Actualizar.
+// Plan Tracker: dibuja el tablero con los datos de /api/datos y guarda los cambios en la hoja.
+// Se refresca sola cada 15 segundos y con el botón Actualizar.
 
 const REFRESCO_MS = 15000;
 
@@ -14,12 +14,20 @@ const TEXTOS = {
     ultima: "Última",
     sin_tareas: "Sin tareas.",
     cumplidas: "{a} de {b} cumplidas",
-    campos: ["Meta", "Detalle", "Notas", "Fecha", "Hora", "Duración"],
-    sin_dato: "Sin dato",
-    min: "min",
+    por_dias: "Se completa marcando los días ({a} de {b})",
+    marcar: "Marcar como hecha",
+    desmarcar: "Volver a pendiente",
+    meta: "Meta",
+    campos: { estado: "Estado", detalle: "Detalle", notas: "Notas", fecha: "Fecha", hora: "Hora", duracion: "Duración (min)" },
+    estados: { pendiente: "Pendiente", en_curso: "En curso", hecho: "Hecho" },
+    guardar: "Guardar",
+    guardando: "Guardando...",
+    guardado: "Guardado en la hoja",
+    sin_cambios: "",
+    descartar: "Tienes cambios sin guardar. ¿Cerrar sin guardar?",
     cerrar: "Cerrar",
     error: "No se pudo actualizar: {e} Reintento en unos segundos.",
-    estados: { pendiente: "pendiente", en_curso: "en curso", hecho: "hecho" },
+    error_guardar: "No se guardó: {e}",
   },
   en: {
     cargando: "Loading your plan...",
@@ -31,22 +39,34 @@ const TEXTOS = {
     ultima: "Last",
     sin_tareas: "No tasks.",
     cumplidas: "{a} of {b} done",
-    campos: ["Goal", "Details", "Notes", "Date", "Time", "Duration"],
-    sin_dato: "No data",
-    min: "min",
+    por_dias: "Completed by checking off days ({a} of {b})",
+    marcar: "Mark as done",
+    desmarcar: "Back to pending",
+    meta: "Goal",
+    campos: { estado: "Status", detalle: "Details", notas: "Notes", fecha: "Date", hora: "Time", duracion: "Duration (min)" },
+    estados: { pendiente: "Pending", en_curso: "In progress", hecho: "Done" },
+    guardar: "Save",
+    guardando: "Saving...",
+    guardado: "Saved to the sheet",
+    sin_cambios: "",
+    descartar: "You have unsaved changes. Close without saving?",
     cerrar: "Close",
     error: "Could not refresh: {e} Retrying in a few seconds.",
-    estados: { pendiente: "pending", en_curso: "in progress", hecho: "done" },
+    error_guardar: "Not saved: {e}",
   },
 };
 
 let datos = null;
 let tareaAbierta = null;
+let original = null;        // valores del panel al abrirlo, para saber si hay cambios
 let idioma = leer("idioma") === "en" ? "en" : "es";
 let pidiendo = false;
+let enEspera = null;        // si piden actualizar mientras otra consulta está en curso
+let escrituras = 0;         // cambios enviados a la hoja que aún no terminan
 
 const $ = (id) => document.getElementById(id);
 const t = (clave) => TEXTOS[idioma][clave];
+const conNumeros = (texto, a, b) => texto.replace("{a}", a).replace("{b}", b);
 
 function crear(etiqueta, clase, texto) {
   const el = document.createElement(etiqueta);
@@ -63,6 +83,13 @@ function guardar(clave, valor) {
   try { localStorage.setItem(clave, valor); } catch { /* sin almacenamiento */ }
 }
 
+function avisar(texto) {
+  $("aviso").textContent = texto;
+  $("aviso").hidden = !texto;
+}
+
+// ---------- Textos fijos ----------
+
 function textosFijos() {
   document.documentElement.lang = idioma;
   $("actualizar-texto").textContent = t("actualizar");
@@ -70,13 +97,23 @@ function textosFijos() {
   for (const b of document.querySelectorAll(".idiomas button")) {
     b.setAttribute("aria-pressed", String(b.dataset.idioma === idioma));
   }
+  const campos = t("campos");
+  $("l-estado").textContent = campos.estado;
+  $("l-detalle").textContent = campos.detalle;
+  $("l-notas").textContent = campos.notas;
+  $("l-fecha").textContent = campos.fecha;
+  $("l-hora").textContent = campos.hora;
+  $("l-duracion").textContent = campos.duracion;
+  $("f-estado").setAttribute("aria-label", campos.estado);
+  for (const b of $("f-estado").querySelectorAll("button")) b.textContent = t("estados")[b.dataset.valor];
+  $("f-guardar").textContent = t("guardar");
   if (!datos) $("cuadrantes").replaceChildren(crear("p", "semana-nota", t("cargando")));
 }
 
-let enEspera = null; // si piden actualizar mientras otra consulta está en curso
+// ---------- Lectura ----------
 
 async function cargar(forzar = false) {
-  if (pidiendo) {
+  if (pidiendo || escrituras > 0) {
     enEspera = { forzar: forzar || (enEspera && enEspera.forzar) };
     return;
   }
@@ -90,24 +127,91 @@ async function cargar(forzar = false) {
     const r = await fetch("/api/datos?" + params);
     const json = await r.json();
     if (json.error) throw new Error(json.error);
-    if (json.idioma !== idioma) { enEspera = enEspera || { forzar: false }; return; } // cambió el idioma a medio camino
+    // Si cambió el idioma o hay un cambio guardándose, estos datos ya no sirven
+    if (json.idioma !== idioma || escrituras > 0) { enEspera = enEspera || { forzar: true }; return; }
     datos = json;
-    $("aviso").hidden = true;
+    avisar("");
     dibujar();
+    // Enlace directo a una tarea: http://localhost:5050/#tarea=ID abre su panel
+    const enlace = location.hash.match(/^#tarea=(.+)$/);
+    if (enlace && !tareaAbierta) {
+      history.replaceState(null, "", location.pathname);
+      abrirPanel(decodeURIComponent(enlace[1]));
+    }
     $("actualizado").textContent = new Date().toLocaleTimeString(idioma, { hour: "2-digit", minute: "2-digit" });
   } catch (e) {
-    $("aviso").textContent = t("error").replace("{e}", e.message);
-    $("aviso").hidden = false;
+    avisar(t("error").replace("{e}", e.message));
   } finally {
     pidiendo = false;
     $("actualizar").classList.remove("girando");
-    if (enEspera) {
+    if (enEspera && escrituras === 0) {
       const siguiente = enEspera;
       enEspera = null;
       cargar(siguiente.forzar);
     }
   }
 }
+
+// ---------- Escritura ----------
+
+async function enviar(url, cuerpo) {
+  escrituras++;
+  try {
+    const r = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(cuerpo),
+    });
+    const json = await r.json().catch(() => ({}));
+    if (!r.ok || json.error) throw new Error(json.error || `HTTP ${r.status}`);
+    return json;
+  } finally {
+    escrituras--;
+    if (escrituras === 0) { enEspera = null; cargar(true); } // trae la hoja ya actualizada
+  }
+}
+
+function recalcular(tarea) {
+  if (tarea.recurrente) {
+    const marcados = tarea.dias.filter((d) => d.marcado).length;
+    tarea.cumplidas = tarea.estado === "hecho" ? tarea.meta_semanal : Math.min(marcados, tarea.meta_semanal);
+  } else {
+    tarea.cumplidas = tarea.estado === "hecho" ? 1 : 0;
+  }
+  tarea.completa = tarea.cumplidas >= tarea.meta_semanal;
+}
+
+async function cambiarEstado(tarea) {
+  const nuevo = tarea.estado === "hecho" ? "pendiente" : "hecho";
+  const antes = tarea.estado;
+  tarea.estado = nuevo;               // se ve al instante
+  recalcular(tarea);
+  dibujar();
+  try {
+    await enviar(`/api/tarea/${encodeURIComponent(tarea.id)}`, { cambios: { estado: nuevo } });
+  } catch (e) {
+    tarea.estado = antes;
+    recalcular(tarea);
+    dibujar();
+    avisar(t("error_guardar").replace("{e}", e.message));
+  }
+}
+
+async function cambiarDia(tarea, dia) {
+  dia.marcado = !dia.marcado;          // se ve al instante
+  recalcular(tarea);
+  dibujar();
+  try {
+    await enviar("/api/marca", { tarea_id: tarea.id, fecha: dia.fecha, marcado: dia.marcado });
+  } catch (e) {
+    dia.marcado = !dia.marcado;
+    recalcular(tarea);
+    dibujar();
+    avisar(t("error_guardar").replace("{e}", e.message));
+  }
+}
+
+// ---------- Dibujo ----------
 
 function dibujarBarra() {
   const caja = $("plan");
@@ -134,12 +238,19 @@ function dibujarBarra() {
 function dibujarTarea(tarea) {
   const li = crear("li", "tarea" + (tarea.completa ? " completa" : ""));
 
-  const casilla = crear("span", "casilla");
+  // Casilla: se marca a mano en las tareas de una vez; en las recurrentes se llena con los días
+  const casilla = crear(tarea.recurrente ? "span" : "button", "casilla");
   if (tarea.completa) casilla.classList.add("hecha");
   else if (tarea.estado === "en_curso") casilla.classList.add("en-curso");
-  casilla.title = tarea.recurrente
-    ? t("cumplidas").replace("{a}", tarea.cumplidas).replace("{b}", tarea.meta_semanal)
-    : t("estados")[tarea.estado] || tarea.estado;
+  if (tarea.recurrente) {
+    casilla.title = conNumeros(t("por_dias"), tarea.cumplidas, tarea.meta_semanal);
+  } else {
+    casilla.type = "button";
+    casilla.title = tarea.estado === "hecho" ? t("desmarcar") : t("marcar");
+    casilla.setAttribute("aria-label", `${casilla.title}: ${tarea.titulo}`);
+    casilla.setAttribute("aria-pressed", String(tarea.estado === "hecho"));
+    casilla.addEventListener("click", () => cambiarEstado(tarea));
+  }
   li.append(casilla);
 
   const titulo = crear("button", "titulo", tarea.titulo);
@@ -150,12 +261,16 @@ function dibujarTarea(tarea) {
 
   const dias = crear("span", "dias");
   for (const d of tarea.dias) {
-    const caja = crear("span", "dia", d.letra);
-    if (!d.toca) caja.classList.add("no-toca");
-    if (d.marcado) caja.classList.add("marcado");
-    if (datos.hoy === d.fecha) caja.classList.add("hoy");
-    caja.title = d.nombre;
-    dias.append(caja);
+    const boton = crear("button", "dia", d.letra);
+    boton.type = "button";
+    if (!d.toca) boton.classList.add("no-toca");
+    if (d.marcado) boton.classList.add("marcado");
+    if (datos.hoy === d.fecha) boton.classList.add("hoy");
+    boton.title = d.nombre;
+    boton.setAttribute("aria-label", `${d.nombre}: ${tarea.titulo}`);
+    boton.setAttribute("aria-pressed", String(d.marcado));
+    boton.addEventListener("click", () => cambiarDia(tarea, d));
+    dias.append(boton);
   }
   li.append(dias);
 
@@ -164,7 +279,12 @@ function dibujarTarea(tarea) {
 }
 
 function dibujar() {
+  if (!datos) return;
   dibujarBarra();
+  // Conserva el foco del teclado al redibujar
+  const foco = document.activeElement && document.activeElement.closest(".cuadrantes")
+    ? document.activeElement.getAttribute("aria-label") : null;
+
   const cont = $("cuadrantes");
   cont.replaceChildren();
   for (const s of datos.semanas) {
@@ -185,51 +305,131 @@ function dibujar() {
     caja.append(lista);
     cont.append(caja);
   }
-  if (tareaAbierta) abrirPanel(tareaAbierta); // mantiene el panel al día tras refrescar
+  if (foco) {
+    const igual = [...cont.querySelectorAll("[aria-label]")].find((el) => el.getAttribute("aria-label") === foco);
+    if (igual) igual.focus();
+  }
+  // Si el panel está abierto y no hay cambios sin guardar, se pone al día con la hoja
+  if (tareaAbierta && !haySinGuardar()) llenarPanel(tareaAbierta);
 }
+
+// ---------- Panel de detalle ----------
 
 function buscarTarea(id) {
   for (const s of datos.semanas) for (const tarea of s.tareas) if (tarea.id === id) return [tarea, s];
   return [null, null];
 }
 
-function abrirPanel(id) {
-  const [tarea, s] = buscarTarea(id);
-  if (!tarea) { cerrarPanel(); return; }
-  tareaAbierta = id;
-  $("panel-titulo").textContent = tarea.titulo;
-  const sub = [`${t("semana")} ${s.numero}`, tarea.frecuencia];
-  if (tarea.recurrente) sub.push(t("cumplidas").replace("{a}", tarea.cumplidas).replace("{b}", tarea.meta_semanal));
-  $("panel-sub").textContent = sub.join(", ");
-
-  const valores = [
-    tarea.meta,
-    tarea.detalle,
-    tarea.notas,
-    tarea.fecha_texto,
-    tarea.hora,
-    tarea.duracion_min ? `${tarea.duracion_min} ${t("min")}` : "",
-  ];
-  const dl = $("panel-datos");
-  dl.replaceChildren();
-  t("campos").forEach((nombre, i) => {
-    dl.append(crear("dt", "", nombre));
-    dl.append(crear("dd", valores[i] ? "" : "vacio", valores[i] || t("sin_dato")));
-  });
-  if ($("fondo-panel").hidden) {
-    $("fondo-panel").hidden = false;
-    $("panel-cerrar").focus();
-  }
+function estadoElegido() {
+  const b = $("f-estado").querySelector('[aria-pressed="true"]');
+  return b ? b.dataset.valor : "pendiente";
 }
 
-function cerrarPanel() {
+function elegirEstado(valor) {
+  for (const b of $("f-estado").querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset.valor === valor));
+}
+
+function valoresPanel() {
+  return {
+    estado: estadoElegido(),
+    detalle: $("f-detalle").value.trim(),
+    notas: $("f-notas").value.trim(),
+    fecha: $("f-fecha").value,
+    hora: $("f-hora").value,
+    duracion_min: $("f-duracion").value.trim(),
+  };
+}
+
+function haySinGuardar() {
+  if (!original) return false;
+  const ahora = valoresPanel();
+  return Object.keys(ahora).some((c) => ahora[c] !== original[c]);
+}
+
+function actualizarBotonGuardar() {
+  $("f-guardar").disabled = !haySinGuardar();
+}
+
+function llenarPanel(id) {
+  const [tarea, s] = buscarTarea(id);
+  if (!tarea) { cerrarPanel(true); return false; }
+  $("panel-titulo").textContent = tarea.titulo;
+  const sub = [`${t("semana")} ${s.numero}`, tarea.frecuencia];
+  if (tarea.recurrente) sub.push(conNumeros(t("cumplidas"), tarea.cumplidas, tarea.meta_semanal));
+  $("panel-sub").textContent = sub.join(", ");
+  $("panel-meta").textContent = tarea.meta ? `${t("meta")}: ${tarea.meta}` : "";
+
+  elegirEstado(tarea.estado);
+  $("f-detalle").value = tarea.detalle;
+  $("f-notas").value = tarea.notas;
+  $("f-fecha").value = tarea.fecha;
+  $("f-hora").value = tarea.hora;
+  $("f-duracion").value = tarea.duracion_min;
+  original = valoresPanel();
+  actualizarBotonGuardar();
+  return true;
+}
+
+function abrirPanel(id) {
+  tareaAbierta = id;
+  $("panel-mensaje").textContent = "";
+  $("panel-mensaje").classList.remove("error");
+  if (!llenarPanel(id)) return;
+  $("fondo-panel").hidden = false;
+  $("f-notas").focus();
+}
+
+function cerrarPanel(forzar = false) {
+  if (!forzar && haySinGuardar() && !confirm(t("descartar"))) return;
   tareaAbierta = null;
+  original = null;
   $("fondo-panel").hidden = true;
 }
 
-$("panel-cerrar").addEventListener("click", cerrarPanel);
+async function guardarPanel(e) {
+  e.preventDefault();
+  if (!haySinGuardar()) return;
+  const [tarea] = buscarTarea(tareaAbierta);
+  if (!tarea) return;
+  const ahora = valoresPanel();
+  const cambios = {};
+  for (const c of Object.keys(ahora)) if (ahora[c] !== original[c]) cambios[c] = ahora[c];
+
+  const mensaje = $("panel-mensaje");
+  mensaje.classList.remove("error");
+  mensaje.textContent = t("guardando");
+  $("f-guardar").disabled = true;
+  try {
+    await enviar(`/api/tarea/${encodeURIComponent(tarea.id)}`, { cambios });
+    Object.assign(tarea, cambios);   // se ve al instante; la hoja ya está actualizada
+    recalcular(tarea);
+    original = ahora;
+    mensaje.textContent = t("guardado");
+    dibujar();
+  } catch (err) {
+    mensaje.classList.add("error");
+    mensaje.textContent = t("error_guardar").replace("{e}", err.message);
+  }
+  actualizarBotonGuardar();
+}
+
+// ---------- Eventos ----------
+
+$("panel-cerrar").addEventListener("click", () => cerrarPanel());
 $("fondo-panel").addEventListener("click", (e) => { if (e.target === $("fondo-panel")) cerrarPanel(); });
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") cerrarPanel(); });
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !$("fondo-panel").hidden) cerrarPanel();
+  if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && !$("fondo-panel").hidden) $("panel-form").requestSubmit();
+});
+$("panel-form").addEventListener("submit", guardarPanel);
+$("panel-form").addEventListener("input", () => { $("panel-mensaje").textContent = ""; actualizarBotonGuardar(); });
+$("f-estado").addEventListener("click", (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  elegirEstado(b.dataset.valor);
+  $("panel-mensaje").textContent = "";
+  actualizarBotonGuardar();
+});
 $("actualizar").addEventListener("click", () => cargar(true));
 for (const b of document.querySelectorAll(".idiomas button")) {
   b.addEventListener("click", () => {

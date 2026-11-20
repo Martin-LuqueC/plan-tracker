@@ -135,10 +135,13 @@ button:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
 .tarea:first-child { border-top: none; }
 
 .casilla {
-  width: 19px; height: 19px; border-radius: 5px;
-  border: 1.5px solid rgba(147, 167, 194, 0.7);
+  width: 19px; height: 19px; border-radius: 5px; padding: 0;
+  border: 1.5px solid rgba(147, 167, 194, 0.7); background: none;
   display: grid; place-items: center;
 }
+button.casilla { cursor: pointer; }
+button.casilla:hover { border-color: var(--acento); background: var(--acento-tenue); }
+span.casilla { border-style: dotted; }
 .casilla.hecha { background: var(--acento); border-color: var(--acento); }
 .casilla.hecha::after {
   content: ""; width: 5px; height: 9px; margin-top: -2px;
@@ -157,11 +160,12 @@ button:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
 
 .dias { display: flex; gap: 4px; }
 .dia {
-  width: 19px; height: 19px; border-radius: 5px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  width: 19px; height: 19px; border-radius: 5px; padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14); background: none;
   font-size: 10px; font-weight: 700; color: var(--suave);
-  display: grid; place-items: center;
+  display: grid; place-items: center; cursor: pointer;
 }
+.dia:hover { border-color: var(--acento); color: var(--texto); opacity: 1; }
 .dia.no-toca { opacity: .3; }
 .dia.hoy { border-color: var(--acento); color: var(--acento-claro); }
 .dia.marcado { background: var(--acento); border-color: var(--acento); color: var(--sobre-acento); opacity: 1; }
@@ -178,7 +182,7 @@ button:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
 .fondo-panel[hidden] { display: none; }
 .panel {
   position: relative;
-  width: min(460px, 100%);
+  width: min(520px, 100%);
   max-height: 90vh; overflow-y: auto;
   background: linear-gradient(160deg, #16305a, #0f2242);
   border: 1px solid var(--tarjeta-borde);
@@ -194,13 +198,47 @@ button:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
   font-size: 22px; line-height: 1; cursor: pointer; padding: 4px;
 }
 .panel-cerrar:hover { color: var(--texto); }
-.panel-datos { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 10px 16px; }
-.panel-datos dt {
-  color: var(--suave); font-size: 12px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: 1px; padding-top: 2px;
+.panel-meta { margin: -8px 0 14px; color: var(--suave); font-size: 14px; }
+.panel-meta:empty { display: none; }
+#panel-form { display: grid; gap: 14px; }
+.campo { display: grid; gap: 6px; min-width: 0; }
+.campo-nombre {
+  color: var(--suave); font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1.2px;
 }
-.panel-datos dd { margin: 0; white-space: pre-wrap; }
-.panel-datos dd.vacio { color: var(--suave); }
+.campo textarea, .campo input {
+  font: inherit; color: var(--texto);
+  background: rgba(5, 12, 26, 0.45);
+  border: 1px solid var(--tarjeta-borde); border-radius: 10px;
+  padding: 8px 10px; width: 100%; min-width: 0;
+}
+.campo textarea { resize: vertical; min-height: 64px; line-height: 1.4; }
+.campo textarea:focus, .campo input:focus { outline: none; border-color: var(--acento); box-shadow: 0 0 0 2px var(--acento-tenue); }
+.fila-campos { display: grid; grid-template-columns: 1.3fr 1fr 0.8fr; gap: 10px; }
+
+.segmentos {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px;
+  background: rgba(5, 12, 26, 0.45); border: 1px solid var(--tarjeta-borde); border-radius: 12px;
+}
+.segmentos button {
+  border: 1px solid transparent; background: none; border-radius: 8px;
+  padding: 6px 8px; cursor: pointer; color: var(--suave); font-size: 14px; font-weight: 600;
+}
+.segmentos button:hover { color: var(--texto); }
+.segmentos button[aria-pressed="true"] {
+  background: var(--acento-tenue); border-color: var(--acento); color: var(--texto);
+}
+
+.panel-pie { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 2px; }
+.panel-mensaje { margin-right: auto; font-size: 13px; color: var(--suave); }
+.panel-mensaje.error { color: #ff9b9b; }
+.boton-principal {
+  border: none; border-radius: 10px; cursor: pointer;
+  padding: 8px 20px; font-weight: 700;
+  background: var(--acento); color: var(--sobre-acento);
+}
+.boton-principal:hover { background: var(--acento-claro); }
+.boton-principal:disabled { background: rgba(75, 156, 211, 0.25); color: var(--suave); cursor: default; }
 
 /* Ventana baja: se reduce el espacio poco a poco para que todo quepa sin scroll */
 @media (max-height: 860px) {
