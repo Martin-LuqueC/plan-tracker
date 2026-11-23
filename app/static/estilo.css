@@ -54,7 +54,8 @@ button { font: inherit; color: inherit; }
   font: inherit; color: inherit; background: var(--marino);
   border: 1px solid var(--tarjeta-borde); border-radius: 8px; padding: 3px 8px;
 }
-.barra-dia { color: var(--acento-claro); font-weight: 500; }
+.barra-dia { color: var(--acento-claro); font-weight: 500; white-space: nowrap; }
+.barra-avance { white-space: nowrap; }
 .barra-derecha { margin-left: auto; display: flex; align-items: center; gap: 14px; }
 .barra-avance { display: flex; align-items: center; gap: 10px; color: var(--suave); font-size: 14px; }
 .avance-pista { width: 120px; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
@@ -83,6 +84,8 @@ button { font: inherit; color: inherit; }
   padding: 3px 10px; border-radius: 999px;
 }
 .idiomas button[aria-pressed="true"] { background: var(--acento); color: var(--sobre-acento); }
+.vistas[hidden] { display: none; }
+.vistas button { white-space: nowrap; }
 
 button:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
 
@@ -101,6 +104,19 @@ button:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
   gap: 16px;
   padding: 16px 18px 18px;
 }
+/* Vista de 4 semanas en planes largos: filas del alto de media pantalla,
+   scroll que encaja de a una fila (2 semanas) y siempre muestra 2 filas completas */
+.cuadrantes.vista-4 {
+  grid-template-rows: none;
+  grid-auto-rows: var(--alto-fila, 50%);
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  scroll-padding-top: var(--relleno-arriba, 16px);
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.cuadrantes.vista-4 .semana { scroll-snap-align: start; scroll-snap-stop: always; }
+
 .semana {
   background: var(--tarjeta);
   border: 1px solid var(--tarjeta-borde);
@@ -318,6 +334,8 @@ body.apretado-2 { font-size: 13px; }
 @media (max-width: 760px) {
   body { overflow: auto; }
   .cuadrantes { grid-template-columns: 1fr; grid-template-rows: none; }
+  .cuadrantes.vista-4 { overflow: visible; grid-auto-rows: auto; scroll-snap-type: none; }
+  .vistas { display: none; }
   .tarea { grid-template-columns: 20px minmax(0, 1fr) 70px; }
   .tarea .dias { grid-column: 2 / 4; }
 }

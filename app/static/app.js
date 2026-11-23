@@ -45,6 +45,8 @@ const TEXTOS = {
     creando: "Creando...",
     error_crear: "No se creó: {e}",
     archivados: "Archivados",
+    vista: "Vista",
+    semanas_vista: (n) => `${n} semanas`,
     nueva_tarea: "Nueva tarea",
     agregar_tarea: "Agregar tarea",
     tarea_campos: { titulo: "Título", frecuencia: "Frecuencia", veces: "Cuántas veces en la semana", dia: "Qué día", meta: "Meta (opcional)", detalle: "Detalle (opcional)" },
@@ -94,6 +96,8 @@ const TEXTOS = {
     creando: "Creating...",
     error_crear: "Not created: {e}",
     archivados: "Archived",
+    vista: "View",
+    semanas_vista: (n) => `${n} weeks`,
     nueva_tarea: "New task",
     agregar_tarea: "Add task",
     tarea_campos: { titulo: "Title", frecuencia: "Frequency", veces: "How many times this week", dia: "Which day", meta: "Goal (optional)", detalle: "Details (optional)" },
@@ -142,7 +146,7 @@ function textosFijos() {
   document.documentElement.lang = idioma;
   $("actualizar-texto").textContent = t("actualizar");
   $("panel-cerrar").setAttribute("aria-label", t("cerrar"));
-  for (const b of document.querySelectorAll(".idiomas button")) {
+  for (const b of document.querySelectorAll(".idiomas button[data-idioma]")) {
     b.setAttribute("aria-pressed", String(b.dataset.idioma === idioma));
   }
   const campos = t("campos");
@@ -352,12 +356,24 @@ function dibujar() {
     ? document.activeElement.getAttribute("aria-label") : null;
 
   const cont = $("cuadrantes");
-  cont.replaceChildren();
-  // 1 a 4 semanas: 2 x 2. Más semanas: se agregan columnas (hasta 4) y luego filas.
+  // Las semanas se arman aparte y se cambian todas juntas al final:
+  // así el navegador nunca ve la zona vacía y no mueve el scroll al refrescar.
+  const nuevas = document.createDocumentFragment();
   const n = Math.max(datos.semanas.length, 1);
-  const columnas = n <= 4 ? 2 : Math.min(4, Math.ceil(n / 2));
-  cont.style.setProperty("--columnas", columnas);
-  cont.style.setProperty("--filas", Math.max(Math.ceil(n / columnas), n <= 4 ? 2 : 1));
+  const vista = vistaActual();
+  dibujarSelectorVista(n, vista);
+  if (vista === "4") {
+    // Vista de 4 en planes largos: 2 columnas, filas de media pantalla y scroll
+    cont.classList.add("vista-4");
+    cont.style.setProperty("--columnas", 2);
+    cont.style.removeProperty("--filas");
+  } else {
+    // 1 a 4 semanas: 2 x 2. Vista "todas": se agregan columnas (hasta 4) y luego filas.
+    cont.classList.remove("vista-4");
+    const columnas = n <= 4 ? 2 : Math.min(4, Math.ceil(n / 2));
+    cont.style.setProperty("--columnas", columnas);
+    cont.style.setProperty("--filas", Math.max(Math.ceil(n / columnas), n <= 4 ? 2 : 1));
+  }
   const planSinTareas = datos.semanas.every((s) => !s.tareas.length);
   for (const s of datos.semanas) {
     const caja = crear("section", "semana" + (s.actual ? " actual" : ""));
@@ -381,31 +397,126 @@ function dibujar() {
     for (const tarea of s.tareas) lista.append(dibujarTarea(tarea));
     if (!s.tareas.length) lista.append(crear("li", "semana-nota", t(planSinTareas ? "sin_tareas_plan" : "sin_tareas")));
     caja.append(lista);
-    cont.append(caja);
+    nuevas.append(caja);
   }
+  cont.replaceChildren(nuevas);
   if (foco) {
     const igual = [...cont.querySelectorAll("[aria-label]")].find((el) => el.getAttribute("aria-label") === foco);
     if (igual) igual.focus();
   }
   // Si el panel está abierto y no hay cambios sin guardar, se pone al día con la hoja
   if (tareaAbierta && !haySinGuardar()) llenarPanel(tareaAbierta);
-  ajustarTamano();
+
+  // Al abrir un plan o cambiar de vista, la fila de la semana actual queda arriba.
+  // En un refresco normal no se toca el scroll: te quedas donde estabas.
+  const clave = `${datos.plan.id}|${vista}`;
+  const posicionar = clave !== ultimaClaveVista;
+  ultimaClaveVista = clave;
+  ajustarTamano(posicionar ? filaDeSemanaActual() : undefined);
 }
 
-// Compacta la pantalla solo si algún cuadrante no cabe, en dos niveles
-function ajustarTamano() {
+// ---------- Vistas de planes largos ----------
+
+let ultimaClaveVista = null;
+
+function vistaActual() {
+  if (!datos || datos.semanas.length <= 4) return "normal";
+  return leer(`vista:${datos.plan.id}`) === "todas" ? "todas" : "4";   // por defecto, la de 4
+}
+
+function dibujarSelectorVista(n, vista) {
+  const caja = $("vistas");
+  caja.hidden = n <= 4;
+  if (n <= 4) return;
+  caja.setAttribute("aria-label", t("vista"));
+  for (const b of caja.querySelectorAll("button")) {
+    b.textContent = t("semanas_vista")(b.dataset.vista === "4" ? 4 : n);
+    b.setAttribute("aria-pressed", String(b.dataset.vista === vista));
+  }
+}
+
+function cambiarVista(nueva) {
+  if (!datos || vistaActual() === nueva) return;
+  guardar(`vista:${datos.plan.id}`, nueva);
+  dibujar();
+}
+
+// Alto de una fila + espacio entre filas, en la vista de 4
+function pasoFila() {
+  const cont = $("cuadrantes");
+  const estilo = getComputedStyle(cont);
+  return (parseFloat(cont.style.getPropertyValue("--alto-fila")) || 0) + parseFloat(estilo.rowGap || 0);
+}
+
+// Fila que está arriba en la vista de 4. Se recuerda al terminar de desplazarse
+// (y al colocarla el programa), para no calcularla en medio de un cambio de tamaño.
+let filaGuardada = 0;
+
+function filaVisible() {
+  const cont = $("cuadrantes");
+  if (!cont.classList.contains("vista-4")) return 0;
+  return filaGuardada;
+}
+
+let esperaScroll = null;
+$("cuadrantes").addEventListener("scroll", () => {
+  clearTimeout(esperaScroll);
+  esperaScroll = setTimeout(() => {
+    const cont = $("cuadrantes");
+    const paso = pasoFila();
+    if (cont.classList.contains("vista-4") && paso) filaGuardada = Math.round(cont.scrollTop / paso);
+  }, 150);
+});
+
+function filaDeSemanaActual() {
+  const i = datos.semanas.findIndex((s) => s.actual);
+  return i < 0 ? 0 : Math.floor(i / 2);
+}
+
+// En la vista de 4, cada fila mide la mitad del espacio visible
+function medirFilas() {
+  const cont = $("cuadrantes");
+  if (!cont.classList.contains("vista-4") || innerWidth <= 760) return;
+  const estilo = getComputedStyle(cont);
+  const arriba = parseFloat(estilo.paddingTop), abajo = parseFloat(estilo.paddingBottom);
+  const alto = (cont.clientHeight - arriba - abajo - parseFloat(estilo.rowGap || 0)) / 2;
+  cont.style.setProperty("--alto-fila", `${Math.max(alto, 120)}px`);
+  cont.style.setProperty("--relleno-arriba", `${arriba}px`);
+}
+
+function irAFila(fila) {
+  const cont = $("cuadrantes");
+  if (!cont.classList.contains("vista-4") || innerWidth <= 760) return;
+  const filas = Math.ceil(datos.semanas.length / 2);
+  const destino = Math.max(0, Math.min(fila, filas - 2));   // si no alcanza, las últimas 4
+  filaGuardada = destino;
+  cont.scrollTo({ top: destino * pasoFila(), behavior: "instant" });
+}
+
+// Compacta la pantalla solo si algún cuadrante no cabe, en dos niveles.
+// "fila" (opcional) es la fila que debe quedar arriba en la vista de 4;
+// sin ella, no se mueve el scroll.
+function ajustarTamano(fila) {
   const cuerpo = document.body;
   const desborda = () => [...document.querySelectorAll(".tareas")].some((u) => u.scrollHeight - u.clientHeight > 1);
   cuerpo.classList.remove("apretado-1", "apretado-2");
-  if (innerWidth <= 760 || !desborda()) return;   // en ventana angosta la página ya hace scroll
-  cuerpo.classList.add("apretado-1");
-  if (desborda()) cuerpo.classList.add("apretado-2");
+  medirFilas();
+  if (innerWidth > 760 && desborda()) {   // en ventana angosta la página ya hace scroll
+    cuerpo.classList.add("apretado-1");
+    medirFilas();
+    if (desborda()) {
+      cuerpo.classList.add("apretado-2");
+      medirFilas();
+    }
+  }
+  if (datos && typeof fila === "number") irAFila(fila);
 }
 
 let esperaTamano = null;
 function programarAjuste() {
   clearTimeout(esperaTamano);
-  esperaTamano = setTimeout(ajustarTamano, 120);
+  clearTimeout(esperaScroll);   // el reacomodo del navegador no cuenta como desplazamiento tuyo
+  esperaTamano = setTimeout(() => ajustarTamano(filaVisible()), 120);
 }
 window.addEventListener("resize", programarAjuste);
 // Además vigila el tamaño real de la página (cubre casos en que no llega el evento resize)
@@ -738,6 +849,10 @@ $("t-frecuencia").addEventListener("click", (e) => {
   if (b) elegirFrecuencia(b.dataset.valor);
 });
 $("nuevo-plan").addEventListener("click", abrirNuevoPlan);
+$("vistas").addEventListener("click", (e) => {
+  const b = e.target.closest("button");
+  if (b) cambiarVista(b.dataset.vista);
+});
 $("plan-cerrar").addEventListener("click", cerrarNuevoPlan);
 $("fondo-plan").addEventListener("click", (e) => { if (e.target === $("fondo-plan")) cerrarNuevoPlan(); });
 $("plan-form").addEventListener("submit", crearPlan);
@@ -760,7 +875,7 @@ $("f-estado").addEventListener("click", (e) => {
   actualizarBotonGuardar();
 });
 $("actualizar").addEventListener("click", () => cargar(true));
-for (const b of document.querySelectorAll(".idiomas button")) {
+for (const b of document.querySelectorAll(".idiomas button[data-idioma]")) {
   b.addEventListener("click", () => {
     if (b.dataset.idioma === idioma) return;
     idioma = b.dataset.idioma;
