@@ -1,26 +1,71 @@
-/* Paleta inspirada en UNC Kenan-Flagler: azul marino y Carolina Blue */
+/* Colores comunes a todas las paletas */
 :root {
-  --marino: #13294b;
-  --fondo-1: #0a1830;
-  --fondo-2: #13294b;
   --tarjeta: rgba(255, 255, 255, 0.045);
   --tarjeta-borde: rgba(255, 255, 255, 0.09);
   --texto: #eaf1f8;
-  --suave: #93a7c2;
   --linea: rgba(255, 255, 255, 0.07);
-  --acento: #4b9cd3;          /* Carolina Blue */
-  --acento-claro: #7bb9e3;
-  --acento-tenue: rgba(75, 156, 211, 0.16);
-  --sobre-acento: #0a1830;
+  --acento-tenue: rgba(var(--acento-rgb), 0.16);
   color-scheme: dark;
+}
+
+/* Paletas por plan (columna "color" de la pestaña Planes).
+   Sirven en <html> para toda la pantalla y en cada muestra del menú de colores. */
+
+/* Carolina: inspirada en UNC Kenan-Flagler, azul marino y Carolina Blue (la original) */
+:root, [data-paleta="carolina"] {
+  --fondo-1: #0a1830; --fondo-2: #13294b; --marino: #13294b;
+  --fondo-rgb: 10, 24, 48; --profundo-rgb: 5, 12, 26;
+  --panel-1: #16305a; --panel-2: #0f2242;
+  --acento: #4b9cd3; --acento-rgb: 75, 156, 211; --acento-claro: #7bb9e3; --sobre-acento: #0a1830;
+  --suave: #93a7c2; --suave-rgb: 147, 167, 194;
+}
+/* Bosque: verde oscuro y jade */
+[data-paleta="bosque"] {
+  --fondo-1: #0a1c15; --fondo-2: #133a2b; --marino: #133a2b;
+  --fondo-rgb: 10, 28, 21; --profundo-rgb: 4, 13, 9;
+  --panel-1: #18452f; --panel-2: #0f2a1f;
+  --acento: #3fb68b; --acento-rgb: 63, 182, 139; --acento-claro: #79d3b0; --sobre-acento: #06150e;
+  --suave: #9bb8ab; --suave-rgb: 155, 184, 171;
+}
+/* Borgoña: vino oscuro y frambuesa */
+[data-paleta="borgona"] {
+  --fondo-1: #1d0c13; --fondo-2: #3d1526; --marino: #3d1526;
+  --fondo-rgb: 29, 12, 19; --profundo-rgb: 14, 5, 9;
+  --panel-1: #4a1b2f; --panel-2: #2b101b;
+  --acento: #e0607e; --acento-rgb: 224, 96, 126; --acento-claro: #ee94a9; --sobre-acento: #1d0c13;
+  --suave: #c3a3ae; --suave-rgb: 195, 163, 174;
+}
+/* Ámbar: gris pizarra y ámbar */
+[data-paleta="ambar"] {
+  --fondo-1: #121519; --fondo-2: #262b33; --marino: #262b33;
+  --fondo-rgb: 18, 21, 25; --profundo-rgb: 8, 9, 12;
+  --panel-1: #2d333d; --panel-2: #1b1f26;
+  --acento: #e3a63b; --acento-rgb: 227, 166, 59; --acento-claro: #f0c574; --sobre-acento: #1a1305;
+  --suave: #a9b0bb; --suave-rgb: 169, 176, 187;
+}
+/* Violeta: índigo y lavanda */
+[data-paleta="violeta"] {
+  --fondo-1: #130e28; --fondo-2: #2a1d54; --marino: #2a1d54;
+  --fondo-rgb: 19, 14, 40; --profundo-rgb: 9, 6, 20;
+  --panel-1: #33255f; --panel-2: #1e1640;
+  --acento: #9b8cf2; --acento-rgb: 155, 140, 242; --acento-claro: #bdb3f8; --sobre-acento: #130e28;
+  --suave: #aaa3c8; --suave-rgb: 170, 163, 200;
+}
+/* Petróleo: azul petróleo y turquesa */
+[data-paleta="petroleo"] {
+  --fondo-1: #061a1d; --fondo-2: #0f353a; --marino: #0f353a;
+  --fondo-rgb: 6, 26, 29; --profundo-rgb: 3, 12, 14;
+  --panel-1: #134249; --panel-2: #0b282c;
+  --acento: #3cc4c4; --acento-rgb: 60, 196, 196; --acento-claro: #7ddada; --sobre-acento: #05181a;
+  --suave: #93b5b8; --suave-rgb: 147, 181, 184;
 }
 
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
 body {
   background:
-    radial-gradient(1200px 700px at 85% 110%, rgba(75, 156, 211, 0.18), transparent 60%),
-    radial-gradient(900px 600px at 0% 0%, rgba(75, 156, 211, 0.08), transparent 55%),
+    radial-gradient(1200px 700px at 85% 110%, rgba(var(--acento-rgb), 0.18), transparent 60%),
+    radial-gradient(900px 600px at 0% 0%, rgba(var(--acento-rgb), 0.08), transparent 55%),
     linear-gradient(160deg, var(--fondo-1), var(--fondo-2));
   background-color: var(--fondo-1);
   color: var(--texto);
@@ -40,7 +85,7 @@ button { font: inherit; color: inherit; }
   gap: 22px;
   padding: 10px 20px;
   border-bottom: 1px solid var(--linea);
-  background: rgba(10, 24, 48, 0.55);
+  background: rgba(var(--fondo-rgb), 0.55);
 }
 .barra-plan { font-weight: 700; font-size: 17px; letter-spacing: .2px; display: flex; align-items: center; gap: 8px; }
 .boton-mas {
@@ -50,6 +95,45 @@ button { font: inherit; color: inherit; }
   display: grid; place-items: center;
 }
 .boton-mas:hover { border-color: var(--acento); background: var(--acento-tenue); }
+
+/* Paleta del plan: botón, menú y muestras */
+.paleta-caja { position: relative; display: flex; }
+.boton-paleta {
+  width: 26px; height: 26px; padding: 3px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--tarjeta-borde); background: var(--tarjeta);
+}
+.boton-paleta:hover, .boton-paleta[aria-expanded="true"] { border-color: var(--acento); }
+.muestra {
+  display: block; width: 100%; height: 100%; border-radius: 999px;
+  background: linear-gradient(135deg, var(--fondo-2) 0 50%, var(--acento) 50% 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+.menu-paleta {
+  position: absolute; top: calc(100% + 8px); left: 0; z-index: 20;
+  display: grid; grid-template-columns: repeat(3, auto); gap: 4px; padding: 8px;
+  background: linear-gradient(160deg, var(--panel-1), var(--panel-2));
+  border: 1px solid var(--tarjeta-borde); border-radius: 14px;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.45);
+  font-size: 13px; font-weight: 600; letter-spacing: 0;
+}
+.menu-paleta[hidden] { display: none; }
+.opcion-paleta {
+  display: flex; align-items: center; gap: 8px; white-space: nowrap;
+  padding: 6px 10px 6px 6px; border-radius: 10px; cursor: pointer;
+  border: 1px solid transparent; background: none; color: var(--texto);
+}
+.opcion-paleta:hover { background: rgba(255, 255, 255, 0.06); }
+.opcion-paleta[aria-checked="true"] { border-color: var(--acento); background: var(--acento-tenue); }
+.opcion-paleta .muestra { width: 22px; height: 22px; flex: none; }
+.opcion-paleta { --acento-tenue: rgba(var(--acento-rgb), 0.16); }
+
+.colores { display: flex; flex-wrap: wrap; gap: 8px; }
+.color-opcion {
+  width: 34px; height: 34px; padding: 3px; border-radius: 999px; cursor: pointer;
+  border: 2px solid transparent; background: none;
+}
+.color-opcion[aria-checked="true"] { border-color: var(--texto); }
+.color-opcion:hover { border-color: var(--suave); }
 .barra-plan select {
   font: inherit; color: inherit; background: var(--marino);
   border: 1px solid var(--tarjeta-borde); border-radius: 8px; padding: 3px 8px;
@@ -76,7 +160,7 @@ button { font: inherit; color: inherit; }
 .idiomas {
   display: inline-flex; padding: 3px; gap: 2px;
   border: 1px solid var(--tarjeta-borde); border-radius: 999px;
-  background: rgba(10, 24, 48, 0.6);
+  background: rgba(var(--fondo-rgb), 0.6);
 }
 .idiomas button {
   border: none; background: none; cursor: pointer;
@@ -129,7 +213,7 @@ button:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
 }
 .semana.actual {
   border-color: var(--acento);
-  box-shadow: 0 0 0 1px var(--acento), 0 0 28px rgba(75, 156, 211, 0.18);
+  box-shadow: 0 0 0 1px var(--acento), 0 0 28px rgba(var(--acento-rgb), 0.18);
 }
 .semana-cabeza { display: flex; align-items: center; gap: 12px; min-height: 26px; }
 .semana-cabeza .boton-mas { margin-left: auto; width: 24px; height: 24px; font-size: 16px; }
@@ -145,7 +229,7 @@ button:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
 .etiqueta {
   margin-left: auto; font-size: 12px; font-weight: 700;
   color: var(--acento-claro); background: var(--acento-tenue);
-  border: 1px solid rgba(75, 156, 211, 0.4);
+  border: 1px solid rgba(var(--acento-rgb), 0.4);
   padding: 2px 10px; border-radius: 999px;
 }
 .semana-enfoque { margin: 6px 0 0; font-size: 15px; font-weight: 600; }
@@ -164,7 +248,7 @@ button:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
 
 .casilla {
   width: 19px; height: 19px; border-radius: 5px; padding: 0;
-  border: 1.5px solid rgba(147, 167, 194, 0.7); background: none;
+  border: 1.5px solid rgba(var(--suave-rgb), 0.7); background: none;
   display: grid; place-items: center;
 }
 button.casilla { cursor: pointer; }
@@ -203,7 +287,7 @@ span.casilla { border-style: dotted; }
 /* Panel de detalle */
 .fondo-panel {
   position: fixed; inset: 0;
-  background: rgba(5, 12, 26, 0.6);
+  background: rgba(var(--profundo-rgb), 0.6);
   display: grid; place-items: center;
   padding: 16px;
 }
@@ -212,7 +296,7 @@ span.casilla { border-style: dotted; }
   position: relative;
   width: min(520px, 100%);
   max-height: 90vh; overflow-y: auto;
-  background: linear-gradient(160deg, #16305a, #0f2242);
+  background: linear-gradient(160deg, var(--panel-1), var(--panel-2));
   border: 1px solid var(--tarjeta-borde);
   border-radius: 16px;
   padding: 22px 24px;
@@ -232,7 +316,7 @@ span.casilla { border-style: dotted; }
 .fila-campos.dos { grid-template-columns: 1.4fr 1fr; }
 .campo select {
   font: inherit; color: var(--texto);
-  background: rgba(5, 12, 26, 0.45);
+  background: rgba(var(--profundo-rgb), 0.45);
   border: 1px solid var(--tarjeta-borde); border-radius: 10px; padding: 8px 10px; width: 100%;
 }
 .campo select:focus { outline: none; border-color: var(--acento); box-shadow: 0 0 0 2px var(--acento-tenue); }
@@ -245,7 +329,7 @@ span.casilla { border-style: dotted; }
 }
 .campo textarea, .campo input {
   font: inherit; color: var(--texto);
-  background: rgba(5, 12, 26, 0.45);
+  background: rgba(var(--profundo-rgb), 0.45);
   border: 1px solid var(--tarjeta-borde); border-radius: 10px;
   padding: 8px 10px; width: 100%; min-width: 0;
 }
@@ -255,7 +339,7 @@ span.casilla { border-style: dotted; }
 
 .segmentos {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px;
-  background: rgba(5, 12, 26, 0.45); border: 1px solid var(--tarjeta-borde); border-radius: 12px;
+  background: rgba(var(--profundo-rgb), 0.45); border: 1px solid var(--tarjeta-borde); border-radius: 12px;
 }
 .segmentos button {
   border: 1px solid transparent; background: none; border-radius: 8px;
@@ -275,14 +359,14 @@ span.casilla { border-style: dotted; }
   background: var(--acento); color: var(--sobre-acento);
 }
 .boton-principal:hover { background: var(--acento-claro); }
-.boton-principal:disabled { background: rgba(75, 156, 211, 0.25); color: var(--suave); cursor: default; }
+.boton-principal:disabled { background: rgba(var(--acento-rgb), 0.25); color: var(--suave); cursor: default; }
 .boton-secundario {
   display: inline-flex; align-items: center; gap: 7px;
   border: 1px solid var(--acento); border-radius: 10px; cursor: pointer;
   padding: 7px 14px; font-weight: 600; background: var(--acento-tenue); color: var(--texto);
   white-space: nowrap;
 }
-.boton-secundario:hover { background: rgba(75, 156, 211, 0.28); }
+.boton-secundario:hover { background: rgba(var(--acento-rgb), 0.28); }
 .boton-secundario:disabled { opacity: .5; cursor: default; }
 .boton-secundario svg { width: 16px; height: 16px; }
 .panel-pie { flex-wrap: wrap; }

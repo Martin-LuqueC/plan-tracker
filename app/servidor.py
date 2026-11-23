@@ -12,7 +12,8 @@ from pathlib import Path
 from flask import Flask, jsonify, request, send_from_directory
 
 from calendario import agendar
-from escritura import ErrorDeDatos, actualizar_tarea, crear_plan, crear_tarea, marcar_dia
+from escritura import (ErrorDeDatos, actualizar_tarea, cambiar_color, crear_plan, crear_tarea,
+                       marcar_dia)
 from google_auth import servicio_sheets
 from hoja import leer_pestanas  # también carga el archivo .env
 from tablero import armar_tablero
@@ -128,7 +129,7 @@ def api_plan():
         return jsonify({"error": "Pedido no válido."}), 400
     try:
         plan_id, texto = crear_plan(cuerpo.get("nombre"), cuerpo.get("nombre_en"),
-                                    cuerpo.get("inicio"), cuerpo.get("semanas"))
+                                    cuerpo.get("inicio"), cuerpo.get("semanas"), cuerpo.get("color"))
     except ErrorDeDatos as error:
         return jsonify({"error": str(error)}), 400
     except Exception as error:
@@ -136,6 +137,22 @@ def api_plan():
     finally:
         _olvidar_copia()
     return jsonify({"ok": True, "plan_id": plan_id, "cambio": texto})
+
+
+@app.post("/api/plan/<plan_id>/color")
+def api_color(plan_id):
+    cuerpo = _pedido_json()
+    if cuerpo is None:
+        return jsonify({"error": "Pedido no válido."}), 400
+    try:
+        texto = cambiar_color(plan_id, cuerpo.get("color"))
+    except ErrorDeDatos as error:
+        return jsonify({"error": str(error)}), 400
+    except Exception as error:
+        return jsonify({"error": f"No pude guardar el color en la hoja: {error}"}), 502
+    finally:
+        _olvidar_copia()
+    return jsonify({"ok": True, "cambio": texto})
 
 
 @app.post("/api/tarea")

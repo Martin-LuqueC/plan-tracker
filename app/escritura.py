@@ -151,6 +151,59 @@ def _escribir_campos(tarea_id, cambios):
 
 
 MAX_SEMANAS = 8
+PALETAS = {"carolina": "Carolina", "bosque": "Bosque", "borgona": "Borgoña",
+           "ambar": "Ámbar", "violeta": "Violeta", "petroleo": "Petróleo"}
+
+
+def _validar_paleta(color):
+    color = str(color or "").strip().lower()
+    if color and color not in PALETAS:
+        raise ErrorDeDatos(f"Paleta no válida: {color}")
+    return color
+
+
+def _asegurar_columna(pestana, columna):
+    """Si la pestaña no tiene esa columna, la agrega al final de la fila 1. Devuelve los encabezados."""
+    filas = _leer(pestana)
+    columnas = [c.strip() for c in filas[0]] if filas else []
+    if columna not in columnas:
+        celda = f"'{pestana}'!{_letra(len(columnas))}1"
+        _srv().spreadsheets().values().update(
+            spreadsheetId=id_hoja(), range=celda, valueInputOption="RAW",
+            body={"values": [[columna]]}).execute()
+        columnas.append(columna)
+    return columnas
+
+
+def cambiar_color(plan_id, color):
+    """Guarda la paleta de un plan en la columna color de Planes. Devuelve el texto registrado."""
+    plan_id = str(plan_id or "").strip()
+    color = _validar_paleta(color)
+    if not color:
+        raise ErrorDeDatos("Elige una paleta.")
+    with _candado:
+        columnas = _asegurar_columna("Planes", "color")
+        planes = _leer("Planes")
+        ci = columnas.index("id")
+        numero_fila, nombre, actual = None, plan_id, ""
+        for i, fila in enumerate(planes[1:], start=2):
+            if len(fila) > ci and fila[ci].strip() == plan_id:
+                numero_fila = i
+                datos_fila = dict(zip(columnas, fila))
+                nombre = datos_fila.get("nombre", plan_id)
+                actual = datos_fila.get("color", "").strip().lower() or "carolina"
+                break
+        if numero_fila is None:
+            raise ErrorDeDatos(f"No encontré el plan {plan_id} en la hoja.")
+        if actual == color:
+            return None   # ya tenía ese color: no se escribe ni se registra
+        celda = f"'Planes'!{_letra(columnas.index('color'))}{numero_fila}"
+        _srv().spreadsheets().values().update(
+            spreadsheetId=id_hoja(), range=celda, valueInputOption="RAW",
+            body={"values": [[color]]}).execute()
+        texto = f"Color del plan {nombre}: {PALETAS[color]}"
+        registrar_cambio(texto)
+        return texto
 
 
 def _agregar_filas(pestana, filas_dict):
@@ -168,10 +221,11 @@ def _agregar_filas(pestana, filas_dict):
     ).execute()
 
 
-def crear_plan(nombre, nombre_en, inicio, semanas):
+def crear_plan(nombre, nombre_en, inicio, semanas, color=""):
     """Crea un plan con sus semanas. Devuelve (id del plan, texto registrado en Cambios)."""
     nombre = str(nombre or "").strip()
     nombre_en = str(nombre_en or "").strip()
+    color = _validar_paleta(color)
     if not nombre:
         raise ErrorDeDatos("Ponle un nombre al plan.")
     if len(nombre) > 80 or len(nombre_en) > 80:
@@ -189,6 +243,8 @@ def crear_plan(nombre, nombre_en, inicio, semanas):
     fin = inicio + timedelta(days=7 * semanas - 1)
 
     with _candado:
+        if color:
+            _asegurar_columna("Planes", "color")
         planes = _leer("Planes")
         columnas = [c.strip() for c in planes[0]] if planes else []
         if "id" not in columnas:
@@ -204,6 +260,8 @@ def crear_plan(nombre, nombre_en, inicio, semanas):
                      "fin": fin.isoformat(), "activo": "SI"}
         if nombre_en:
             fila_plan["nombre_en"] = nombre_en
+        if color:
+            fila_plan["color"] = color
         _agregar_filas("Planes", [fila_plan])
         _agregar_filas("Semanas", [
             {"plan_id": plan_id, "numero": i + 1,

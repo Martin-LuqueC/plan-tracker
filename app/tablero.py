@@ -229,9 +229,11 @@ def armar_tablero(datos, plan_id=None, hoy=None, idioma="es"):
     return {
         "hoy": hoy.isoformat(),
         "idioma": idioma,
-        "plan": {"id": pid, "nombre": traducido(plan, "nombre", idioma)},
+        "plan": {"id": pid, "nombre": traducido(plan, "nombre", idioma),
+                 "color": plan.get("color", "").strip().lower() or "carolina"},
         "planes": [{"id": p.get("id", ""), "nombre": traducido(p, "nombre", idioma),
-                    "activo": p.get("activo", "").strip().upper() == "SI"} for p in planes],
+                    "activo": p.get("activo", "").strip().upper() == "SI",
+                    "color": p.get("color", "").strip().lower() or "carolina"} for p in planes],
         "estado_plan": estado_plan,
         "texto_dia": texto_dia,
         "semana_actual": actual,

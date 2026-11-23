@@ -28,6 +28,15 @@ En la pantalla
     fecha, hora y el boton "Agendar en Calendar".
   - Boton +: agrega una tarea a esa semana, o un plan nuevo
     (el + al lado del nombre del plan).
+  - Circulo de colores (al lado del + del plan): elige la paleta
+    de colores de ese plan. Hay seis: Carolina, Bosque, Borgona,
+    Ambar, Violeta y Petroleo. Se guarda en la hoja (columna color
+    de Planes), asi cada plan se reconoce por su color.
+  - Planes de mas de 4 semanas: arriba aparece "4 semanas | 8
+    semanas". En la vista de 4, la rueda del mouse avanza de a dos
+    semanas y siempre muestras 4 enteras; al abrir el plan, la
+    semana actual queda arriba. Cada plan recuerda su vista.
+  - Si una semana no cabe, la letra y los espacios se achican solos.
   - ES / EN: cambia el idioma.
   - La pantalla se actualiza sola cada 15 segundos. Si Claude
     cambio algo desde un chat, aparece sin que hagas nada.

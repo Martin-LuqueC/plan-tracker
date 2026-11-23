@@ -31,7 +31,11 @@ The board refreshes on its own every 15 seconds, so a change made by Claude in a
 * Two kinds of tasks: one time tasks with a check box, and recurring tasks (daily, Monday to Friday, a fixed weekday, or N times a week) with a box for each day
 * Task panel with status, details, notes, date, time and duration
 * "Add to Calendar" button that creates or updates the event in Google Calendar and keeps the link in the sheet
+* Add a task to any week straight from the board, with its frequency, goal and details
 * Several plans in the same sheet, with a selector and a form to create a new plan
+* A color palette per plan (six dark palettes: Carolina, Forest, Burgundy, Amber, Violet and Teal), saved in the sheet, so each plan is easy to tell apart at a glance
+* Plans longer than four weeks get a "4 weeks / all weeks" switch, saved per plan. The four week view keeps the same size as a four week plan and scrolls one row (two weeks) at a time with scroll snap, always showing four whole weeks and opening on the current week
+* The layout adapts on its own: if a week does not fit the window, text and spacing get a little more compact
 * Spanish and English interface
 * Every change is logged in a `Cambios` tab, with its source (app or Claude)
 * Opens in its own window with a double click, and can start with Windows
@@ -54,7 +58,7 @@ Google Sheet "Plan Tracker"  <---->  Claude chats (Sheets connector)
 Local Flask server (127.0.0.1)  --->  Chrome window in app mode
 ```
 
-The sheet has six tabs: `Planes`, `Semanas`, `Tareas`, `Marcas` (one row per day a recurring task was done), `Metricas` and `Cambios`. Columns are found by their header name, so the sheet can be read and edited by people and by Claude without breaking the app.
+The sheet has six tabs: `Planes`, `Semanas`, `Tareas`, `Marcas` (one row per day a recurring task was done), `Metricas` and `Cambios`. Columns are found by their header name, so the sheet can be read and edited by people and by Claude without breaking the app. Each plan's palette lives in the `color` column of `Planes`, so Claude can also change it from a chat.
 
 ## How to use it (Windows)
 

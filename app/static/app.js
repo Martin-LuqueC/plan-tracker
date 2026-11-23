@@ -47,6 +47,10 @@ const TEXTOS = {
     archivados: "Archivados",
     vista: "Vista",
     semanas_vista: (n) => `${n} semanas`,
+    colores_plan: "Colores del plan",
+    color: "Color",
+    paletas: { carolina: "Carolina", bosque: "Bosque", borgona: "Borgoña", ambar: "Ámbar", violeta: "Violeta", petroleo: "Petróleo" },
+    error_color: "No se guardó el color: {e}",
     nueva_tarea: "Nueva tarea",
     agregar_tarea: "Agregar tarea",
     tarea_campos: { titulo: "Título", frecuencia: "Frecuencia", veces: "Cuántas veces en la semana", dia: "Qué día", meta: "Meta (opcional)", detalle: "Detalle (opcional)" },
@@ -98,6 +102,10 @@ const TEXTOS = {
     archivados: "Archived",
     vista: "View",
     semanas_vista: (n) => `${n} weeks`,
+    colores_plan: "Plan colors",
+    color: "Color",
+    paletas: { carolina: "Carolina", bosque: "Forest", borgona: "Burgundy", ambar: "Amber", violeta: "Violet", petroleo: "Teal" },
+    error_color: "Color not saved: {e}",
     nueva_tarea: "New task",
     agregar_tarea: "Add task",
     tarea_campos: { titulo: "Title", frecuencia: "Frequency", veces: "How many times this week", dia: "Which day", meta: "Goal (optional)", detalle: "Details (optional)" },
@@ -162,6 +170,7 @@ function textosFijos() {
   etiquetaAgendar(tareaAbierta && datos ? buscarTarea(tareaAbierta)[0] : null);
   textosPlan();
   textosTarea();
+  textosPaleta();
   if (!datos) $("cuadrantes").replaceChildren(crear("p", "semana-nota", t("cargando")));
 }
 
@@ -301,6 +310,7 @@ function dibujarBarra() {
     caja.textContent = datos.plan.nombre;
   }
   $("dia").textContent = datos.texto_dia;
+  aplicarPaleta(datos.plan.color);
   $("avance-texto").textContent = `${t("avance")} ${datos.avance_semana}%`;
   $("avance-relleno").style.width = datos.avance_semana + "%";
 }
@@ -665,6 +675,89 @@ function etiquetaAgendar(tarea) {
   $("f-agendar-texto").textContent = tarea && tarea.evento_id ? t("reagendar") : t("agendar");
 }
 
+// ---------- Paletas de colores ----------
+
+const PALETAS = ["carolina", "bosque", "borgona", "ambar", "violeta", "petroleo"];
+
+function aplicarPaleta(id) {
+  document.documentElement.dataset.paleta = PALETAS.includes(id) ? id : "carolina";
+}
+
+function muestra() {
+  return crear("span", "muestra");
+}
+
+function textosPaleta() {
+  $("boton-paleta").title = t("colores_plan");
+  $("boton-paleta").setAttribute("aria-label", t("colores_plan"));
+  $("menu-paleta").setAttribute("aria-label", t("colores_plan"));
+  $("l-plan-color").textContent = t("color");
+  const actual = datos ? datos.plan.color : "carolina";
+  const menu = $("menu-paleta");
+  menu.replaceChildren();
+  for (const id of PALETAS) {
+    const b = crear("button", "opcion-paleta");
+    b.type = "button";
+    b.dataset.paleta = id;   // la muestra se pinta con su propia paleta
+    b.setAttribute("role", "menuitemradio");
+    b.setAttribute("aria-checked", String(id === actual));
+    b.append(muestra(), crear("span", "", t("paletas")[id]));
+    menu.append(b);
+  }
+  const elegido = $("p-color").querySelector('[aria-checked="true"]');
+  const colorForm = elegido ? elegido.dataset.paleta : "carolina";
+  $("p-color").replaceChildren();
+  for (const id of PALETAS) {
+    const b = crear("button", "color-opcion");
+    b.type = "button";
+    b.dataset.paleta = id;
+    b.title = t("paletas")[id];
+    b.setAttribute("role", "radio");
+    b.setAttribute("aria-label", t("paletas")[id]);
+    b.setAttribute("aria-checked", String(id === colorForm));
+    b.append(muestra());
+    $("p-color").append(b);
+  }
+}
+
+function abrirMenuPaleta(abrir) {
+  $("menu-paleta").hidden = !abrir;
+  $("boton-paleta").setAttribute("aria-expanded", String(abrir));
+  if (abrir) {
+    textosPaleta();
+    const marcado = $("menu-paleta").querySelector('[aria-checked="true"]');
+    if (marcado) marcado.focus();
+  }
+}
+
+async function cambiarPaleta(id) {
+  abrirMenuPaleta(false);
+  if (!datos || datos.plan.color === id) return;
+  const antes = datos.plan.color;
+  const planId = datos.plan.id;
+  datos.plan.color = id;           // se ve al instante
+  aplicarPaleta(id);
+  try {
+    await enviar(`/api/plan/${encodeURIComponent(planId)}/color`, { color: id });
+  } catch (err) {
+    if (datos && datos.plan.id === planId) {
+      datos.plan.color = antes;
+      aplicarPaleta(antes);
+    }
+    avisar(t("error_color").replace("{e}", err.message));
+  }
+}
+
+function colorLibre() {
+  // Propone la primera paleta que ningún plan usa; si están todas en uso, Carolina
+  const usados = new Set((datos ? datos.planes : []).map((p) => p.color));
+  return PALETAS.find((id) => !usados.has(id)) || "carolina";
+}
+
+function elegirColorForm(id) {
+  for (const b of $("p-color").querySelectorAll("button")) b.setAttribute("aria-checked", String(b.dataset.paleta === id));
+}
+
 // ---------- Plan nuevo ----------
 
 function fechaIso(d) {
@@ -717,6 +810,7 @@ function abrirNuevoPlan() {
   $("plan-form").reset();
   $("p-semanas").value = "4";
   $("p-inicio").value = proximoLunes();
+  elegirColorForm(colorLibre());
   $("plan-mensaje").textContent = "";
   $("plan-mensaje").classList.remove("error");
   $("p-crear").disabled = false;
@@ -741,6 +835,7 @@ async function crearPlan(e) {
       nombre_en: $("p-nombre-en").value.trim(),
       inicio: $("p-inicio").value,
       semanas: Number($("p-semanas").value),
+      color: ($("p-color").querySelector('[aria-checked="true"]') || {}).dataset?.paleta || "",
     });
     guardar("plan", r.plan_id);   // la pantalla pasa al plan nuevo
     cerrarNuevoPlan();
@@ -849,6 +944,20 @@ $("t-frecuencia").addEventListener("click", (e) => {
   if (b) elegirFrecuencia(b.dataset.valor);
 });
 $("nuevo-plan").addEventListener("click", abrirNuevoPlan);
+$("boton-paleta").addEventListener("click", (e) => {
+  e.stopPropagation();
+  abrirMenuPaleta($("menu-paleta").hidden);
+});
+$("menu-paleta").addEventListener("click", (e) => {
+  e.stopPropagation();
+  const b = e.target.closest("[data-paleta]");
+  if (b) cambiarPaleta(b.dataset.paleta);
+});
+document.addEventListener("click", () => { if (!$("menu-paleta").hidden) abrirMenuPaleta(false); });
+$("p-color").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-paleta]");
+  if (b) elegirColorForm(b.dataset.paleta);
+});
 $("vistas").addEventListener("click", (e) => {
   const b = e.target.closest("button");
   if (b) cambiarVista(b.dataset.vista);
@@ -859,6 +968,7 @@ $("plan-form").addEventListener("submit", crearPlan);
 $("p-inicio").addEventListener("input", mostrarFinPlan);
 $("p-semanas").addEventListener("change", mostrarFinPlan);
 document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !$("menu-paleta").hidden) { abrirMenuPaleta(false); $("boton-paleta").focus(); }
   if (e.key === "Escape" && !$("fondo-tarea").hidden) cerrarNuevaTarea();
   if (e.key === "Escape" && !$("fondo-plan").hidden) cerrarNuevoPlan();
   if (e.key === "Escape" && !$("fondo-panel").hidden) cerrarPanel();
@@ -885,6 +995,13 @@ for (const b of document.querySelectorAll(".idiomas button[data-idioma]")) {
   });
 }
 window.addEventListener("focus", () => cargar());
+
+// Enlace directo a un plan: http://localhost:5050/?plan=ID abre ese plan
+const planEnlace = new URLSearchParams(location.search).get("plan");
+if (planEnlace) {
+  guardar("plan", planEnlace);
+  history.replaceState(null, "", location.pathname + location.hash);
+}
 
 textosFijos();
 cargar(true);

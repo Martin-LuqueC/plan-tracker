@@ -13,6 +13,12 @@
     <div class="barra-plan">
       <span id="plan"></span>
       <button type="button" class="boton-mas" id="nuevo-plan">+</button>
+      <div class="paleta-caja">
+        <button type="button" class="boton-paleta" id="boton-paleta" aria-haspopup="true" aria-expanded="false">
+          <span class="muestra"></span>
+        </button>
+        <div class="menu-paleta" id="menu-paleta" role="menu" hidden></div>
+      </div>
     </div>
     <div class="barra-dia" id="dia"></div>
     <div class="idiomas vistas" id="vistas" role="group" hidden>
@@ -114,6 +120,10 @@
           </label>
         </div>
         <p class="plan-fin" id="p-fin"></p>
+        <div class="campo">
+          <span class="campo-nombre" id="l-plan-color"></span>
+          <div class="colores" id="p-color" role="radiogroup"></div>
+        </div>
         <div class="panel-pie">
           <span class="panel-mensaje" id="plan-mensaje" role="status"></span>
           <button type="submit" class="boton-principal" id="p-crear"></button>
